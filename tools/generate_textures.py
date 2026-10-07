@@ -1,212 +1,227 @@
-# /// script
-# requires-python = ">=3.9"
-# dependencies = ["pillow"]
-# ///
-"""Genera las texturas provisionales (16x16) de los ítems del mod.
+#!/usr/bin/env python3
+"""
+Diorite Isn't Useless — generador de texturas de ítems (16x16).
 
-Cada textura se define como una cuadrícula de 16x16 caracteres; cada carácter
-es un color de su paleta ("." = transparente). Para retocar una textura, edita
-su cuadrícula y vuelve a ejecutar el script.
+Cada textura es una cuadrícula de 16 filas x 16 caracteres.
+Cada carácter es un píxel; su color sale de la paleta del ítem.
+'.' = transparente.
 
+Uso:
+    python generate_textures.py                 -> genera los PNG en ./out
+    python generate_textures.py --out DIR       -> genera en DIR
+    python generate_textures.py --preview DIR   -> además, previews ampliados
+
+Para retocar una textura: cambia caracteres en la cuadrícula y vuelve a ejecutar.
 Reglas de estilo:
-  - Luz desde arriba a la izquierda: caras de arriba/izquierda claras,
-    abajo/derecha oscuras. Tonos por material: 1 (claro), 2 (medio), 3 (oscuro),
-    más W (brillo). Un segundo material en la misma textura usa 4/5/6.
-  - Contorno continuo de 1 px: O (arriba/izquierda) y X (abajo/derecha, más
-    oscuro). El script falla si algún píxel interior toca el vacío o el borde.
-
-Uso (desde la raíz del repo):
-    uv run tools/generate_textures.py
-    # o bien: pip install pillow && python tools/generate_textures.py
-
-Opcional: --preview DIR guarda además copias ampliadas x16 sobre el gris de una
-ranura de inventario (una por textura y una hoja con todas).
+  - Luz desde arriba a la izquierda (H/L arriba-izquierda, D/O abajo-derecha).
+  - El contorno es el tono MÁS OSCURO del propio material, no negro puro.
+  - 4-5 tonos por material, sin degradados suaves.
 """
 
-from __future__ import annotations
-
 import argparse
+import sys
 from pathlib import Path
 
 from PIL import Image
 
-SIZE = 16
-PREVIEW_SCALE = 16
-PREVIEW_BACKGROUND = "#8B8B8B"  # gris de las ranuras del inventario
-OUTPUT_DIR = (
-    Path(__file__).resolve().parent.parent
-    / "src/main/resources/assets/dioriteisntuseless/textures/item"
-)
+# --------------------------------------------------------------------------
+# Paletas
+# --------------------------------------------------------------------------
 
-TRANSPARENT = "."
-OUTLINE = {"O", "X"}
-
-COMMON: dict[str, str] = {
-    "O": "#2E2B33",  # contorno (lado iluminado)
-    "X": "#18161C",  # contorno abajo/derecha, más oscuro
-    "W": "#F5F0FF",  # brillo (tinte lila)
+# Cristal de diorita: blanco lechoso con alma lila (pariente del lingote,
+# pero translúcido y más frío).
+CRYSTAL = {
+    "O": "#3E3354",  # contorno (lila muy oscuro)
+    "D": "#7A6C99",  # cara en sombra
+    "d": "#9A8DB8",  # sombra intermedia
+    "M": "#C2B9D9",  # tono medio
+    "L": "#E6E1F0",  # cara iluminada
+    "H": "#FFFFFF",  # brillo
+    "P": "#F2D7EE",  # reflejo rosado en la arista
+    "S": "#4A4458",  # mota de diorita (pocas)
 }
 
-# Cristal: grises con tinte lila para que se lea como cristal y no como piedra.
-CRYSTAL: dict[str, str] = {
-    "1": "#DDD7EA",  # cara iluminada
-    "2": "#B6AECB",  # cara de rotura de la base
-    "3": "#8C84A3",  # cara en sombra
+# Lingote de dioritina: diorita "fundida y compactada". Blanco grisáceo
+# con las motas negras que la delatan.
+INGOT = {
+    "O": "#34313B",  # contorno
+    "D": "#7D7A85",  # cara lateral (sombra)
+    "d": "#9C99A3",  # sombra suave
+    "M": "#BEBCC4",  # cara frontal
+    "L": "#E3E3E3",  # cara superior
+    "H": "#FAFAFA",  # brillo
+    "S": "#3A3A3A",  # mota oscura
+    "s": "#6E6A78",  # mota clara (sobre sombra)
+    "P": "#F5F0FF",  # destello lila
 }
 
-# Lingote: grises neutros de la diorita.
-INGOT: dict[str, str] = {
-    "1": "#E3E3E3",  # cara superior (diorita base)
-    "2": "#C4C4C4",  # cara frontal
-    "3": "#A8A8A8",  # cara lateral (sombra)
-    "m": "#3A3A3A",  # motas
+# Hacha de dioritina: cabeza del mismo material que el lingote,
+# mango de madera propio y una atadura oscura.
+AXE = {
+    # cabeza
+    "O": "#34313B",
+    "D": "#7D7A85",
+    "d": "#9C99A3",
+    "M": "#BEBCC4",
+    "L": "#E3E3E3",
+    "H": "#FAFAFA",
+    "S": "#3A3A3A",
+    "P": "#F5F0FF",
+    # mango
+    "w": "#2A1C10",  # contorno madera
+    "b": "#5A3D22",  # madera oscura
+    "m": "#7E5832",  # madera media
+    "l": "#A27846",  # madera clara
+    # atadura (cuero/cordel)
+    "r": "#3B2A3F",
+    "R": "#5E4566",
 }
 
-# Hacha: cabeza con los tonos del lingote (1-3, motas) y mango de madera (4-6).
-AXE: dict[str, str] = {
-    **INGOT,
-    "4": "#B88A57",  # madera clara
-    "5": "#966A3F",  # madera media (extremo y sombra bajo la cabeza)
-    "6": "#6E4A2B",  # madera oscura
-}
+# --------------------------------------------------------------------------
+# Cuadrículas (16x16)
+# --------------------------------------------------------------------------
 
-TEXTURES: dict[str, tuple[dict[str, str], list[str]]] = {
-    # Esquirla alargada en diagonal: cara clara arriba-izquierda y oscura abajo-derecha
-    # separadas por una arista con dos píxeles de brillo; punta en aguja; base rota.
-    # Al lado, una esquirla más pequeña.
-    "diorite_crystal": (CRYSTAL, [
-        ".............O..",
-        "...........OO1X.",
-        ".........OO11X..",
-        "........O1113X..",
-        ".......O11W3X...",
-        "......O11W33X...",
-        ".....O11133X....",
-        "....O11133X...O.",
-        "...O11133X..OO1X",
-        "..O11133X..O11X.",
-        ".O11133X..O113X.",
-        "O22133X..O113X..",
-        ".X223X..O213X...",
-        "..X2X...O22X....",
-        "...X.....XX.....",
-        "................",
-    ]),
-    # Lingote en perspectiva: cara superior clara con brillo en la arista,
-    # frontal media y lateral oscura; cuatro motas repartidas.
-    "dioritine_ingot": (INGOT, [
-        "................",
-        "................",
-        "................",
-        "................",
-        "......OOOOOOO...",
-        ".....OW111111X..",
-        "....OW111m113X..",
-        "...O1111111333X.",
-        "..O22222222333X.",
-        "..O22m222223m3X.",
-        ".O22222222233X..",
-        ".O222222m223X...",
-        "..XXXXXXXXXX....",
-        "................",
-        "................",
-        "................",
-    ]),
-    # Hacha: mango en diagonal que atraviesa el ojo y asoma por arriba; hoja abierta
-    # hacia el filo (izquierda) con cuernos arriba y abajo, brillo en el filo y tres motas.
-    "dioritine_axe": (AXE, [
-        "...OOO..........",
-        "..O111XO.....OO.",
-        ".O111122XOOOO46X",
-        ".OW11m22233346X.",
-        ".OW122223m336X..",
-        ".O12m2233336X...",
-        ".O222233X46X....",
-        "..X223XO56X.....",
-        "...XXXO56X......",
-        ".....O46X.......",
-        "....O46X........",
-        "...O46X.........",
-        "..O46X..........",
-        ".O46X...........",
-        "O56X............",
-        ".XX.............",
-    ]),
+CRYSTAL_GRID = [
+    "................",
+    ".............O..",
+    "............OHO.",
+    "...........OHLdO",
+    "..........OHLPDO",
+    ".........OLLPMDO",
+    "........OLLPMdDO",
+    ".......OLHPMMdO.",
+    "......OLLPMMdDO.",
+    ".....OLLPMSddO..",
+    "....OLLPMMddDO..",
+    "...OLLPMMdDDO...",
+    "..OLPMMddDDO....",
+    "..OMMMddDO......",
+    "..OdddDOO.......",
+    "...OOOO.........",
+]
+
+INGOT_GRID = [
+    "................",
+    "................",
+    "................",
+    "................",
+    "....OOOOOOOO....",
+    "...OHHLLLLSLO...",
+    "..OHLLSSLLLLLO..",
+    ".OHLLLLLLLLLLDO.",
+    ".OPLLLLLLLSLLDDO",
+    ".OMMMMMMMMMMMdDO",
+    ".OMMSMMMMMMMddDO",
+    ".OdMMMMMMsMMddDO",
+    ".OddddddddddddO.",
+    "..OOOOOOOOOOOO..",
+    "................",
+    "................",
+]
+
+AXE_GRID = [
+    "................",
+    ".......OO.......",
+    "......OHMO......",
+    ".....OHMLLO..ww.",
+    "....OPMLSLMOwlbw",
+    "...OHMLLLLMMMdO.",
+    "...OPMLLMMSMddO.",
+    "....OHddMMddDDO.",
+    ".....OOOwlbwOOO.",
+    ".......wlbw.....",
+    "......wmbw......",
+    ".....wlbw.......",
+    "....wlbw........",
+    "...wmbw.........",
+    "..wlbw..........",
+    ".wwww...........",
+]
+
+ITEMS = {
+    "diorite_crystal": (CRYSTAL_GRID, CRYSTAL),
+    "dioritine_ingot": (INGOT_GRID, INGOT),
+    "dioritine_axe": (AXE_GRID, AXE),
 }
 
 
-def hex_to_rgba(color: str) -> tuple[int, int, int, int]:
-    value = color.lstrip("#")
-    return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16), 255
+# --------------------------------------------------------------------------
+# Render
+# --------------------------------------------------------------------------
+
+def hex_to_rgba(h: str) -> tuple:
+    h = h.lstrip("#")
+    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), 255)
 
 
-def check_outline(name: str, rows: list[str]) -> None:
-    """Todo píxel interior debe estar rodeado (en cruz) por interior o contorno."""
-    for y, row in enumerate(rows):
-        for x, char in enumerate(row):
-            if char == TRANSPARENT or char in OUTLINE:
+def render(grid: list, palette: dict, name: str) -> Image.Image:
+    if len(grid) != 16:
+        raise ValueError(f"{name}: la cuadrícula tiene {len(grid)} filas, deben ser 16")
+    img = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    px = img.load()
+    for y, row in enumerate(grid):
+        if len(row) != 16:
+            raise ValueError(f"{name}: la fila {y} tiene {len(row)} caracteres, deben ser 16")
+        for x, ch in enumerate(row):
+            if ch == ".":
                 continue
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                nx, ny = x + dx, y + dy
-                if not (0 <= nx < SIZE and 0 <= ny < SIZE) or rows[ny][nx] == TRANSPARENT:
-                    raise ValueError(f"{name}: hueco en el contorno junto a ({x}, {y})")
+            if ch not in palette:
+                raise ValueError(f"{name}: carácter '{ch}' en ({x},{y}) no está en la paleta")
+            px[x, y] = hex_to_rgba(palette[ch])
+    return img
 
 
-def render(name: str, palette: dict[str, str], rows: list[str]) -> Image.Image:
-    if len(rows) != SIZE or any(len(row) != SIZE for row in rows):
-        raise ValueError(f"{name}: la cuadrícula debe ser de {SIZE}x{SIZE}")
-    check_outline(name, rows)
-    colors = {**COMMON, **palette}
-    image = Image.new("RGBA", (SIZE, SIZE))
-    for y, row in enumerate(rows):
-        for x, char in enumerate(row):
-            if char == TRANSPARENT:
-                continue
-            if char not in colors:
-                raise ValueError(f"{name}: carácter desconocido {char!r} en ({x}, {y})")
-            image.putpixel((x, y), hex_to_rgba(colors[char]))
-    return image
+def preview(img: Image.Image, scale: int = 24) -> Image.Image:
+    """Ampliado sin suavizado sobre un tablero gris, como en un editor."""
+    big = img.resize((16 * scale, 16 * scale), Image.NEAREST)
+    bg = Image.new("RGBA", big.size, (0, 0, 0, 255))
+    bpx = bg.load()
+    for y in range(big.size[1]):
+        for x in range(big.size[0]):
+            c = 0x9A if ((x // scale) + (y // scale)) % 2 == 0 else 0x8A
+            bpx[x, y] = (c, c, c, 255)
+    bg.alpha_composite(big)
+    return bg
 
 
-def enlarge(image: Image.Image) -> Image.Image:
-    # NEAREST mantiene los píxeles exactos al ampliar.
-    big = image.resize((SIZE * PREVIEW_SCALE,) * 2, Image.NEAREST)
-    background = Image.new("RGBA", big.size, hex_to_rgba(PREVIEW_BACKGROUND))
-    return Image.alpha_composite(background, big)
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--out", default="out", help="carpeta de salida de los PNG 16x16")
+    ap.add_argument("--preview", default=None, help="carpeta para previews ampliados")
+    args = ap.parse_args()
 
-
-def save_previews(directory: Path, images: dict[str, Image.Image]) -> None:
-    directory.mkdir(parents=True, exist_ok=True)
-    gap = PREVIEW_SCALE
-    tile = SIZE * PREVIEW_SCALE
-    sheet = Image.new(
-        "RGBA",
-        (gap + len(images) * (tile + gap), tile + 2 * gap),
-        hex_to_rgba(PREVIEW_BACKGROUND),
-    )
-    for i, (name, image) in enumerate(images.items()):
-        big = enlarge(image)
-        big.save(directory / f"{name}.png")
-        sheet.paste(big, (gap + i * (tile + gap), gap))
-    sheet.save(directory / "all.png")
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--preview", type=Path, help="carpeta para las copias ampliadas")
-    args = parser.parse_args()
-
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    images = {}
-    for name, (palette, rows) in TEXTURES.items():
-        images[name] = render(name, palette, rows)
-        images[name].save(OUTPUT_DIR / f"{name}.png")
-        print(f"OK {name}.png")
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    rendered = {}
+    for name, (grid, pal) in ITEMS.items():
+        img = render(grid, pal, name)
+        img.save(out / f"{name}.png")
+        rendered[name] = img
+        print(f"OK  {out / (name + '.png')}")
 
     if args.preview:
-        save_previews(args.preview, images)
-        print(f"Vista previa en {args.preview}")
+        pv = Path(args.preview)
+        pv.mkdir(parents=True, exist_ok=True)
+        tiles = []
+        for name, img in rendered.items():
+            p = preview(img)
+            p.save(pv / f"{name}_preview.png")
+            tiles.append(p)
+        # hoja comparativa: las tres ampliadas + tamaño real x2 abajo
+        gap = 16
+        w = sum(t.size[0] for t in tiles) + gap * (len(tiles) + 1)
+        h = tiles[0].size[1] + gap * 3 + 32
+        sheet = Image.new("RGBA", (w, h), (40, 40, 46, 255))
+        x = gap
+        for name, t in zip(rendered, tiles):
+            sheet.alpha_composite(t, (x, gap))
+            small = rendered[name].resize((32, 32), Image.NEAREST)
+            sheet.alpha_composite(small, (x + t.size[0] // 2 - 16, gap * 2 + t.size[1]))
+            x += t.size[0] + gap
+        sheet.save(pv / "sheet.png")
+        print(f"OK  {pv / 'sheet.png'}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
