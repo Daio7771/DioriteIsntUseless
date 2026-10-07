@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "dioriteisntuseless",
+  "version": "${version}",
+  "name": "DioriteIsntUseless",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/dioriteisntuseless/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-datagen": [
+      "daio7771.dioriteisntuseless.client.DioriteisntuselessDataGenerator"
+    ],
+    "client": [
+      "daio7771.dioriteisntuseless.client.DioriteisntuselessClient"
+    ],
+    "main": [
+      "daio7771.dioriteisntuseless.Dioriteisntuseless"
+    ]
+  },
+  "mixins": [
+    "dioriteisntuseless.mixins.json",
+    {
+      "config": "dioriteisntuseless.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-language-kotlin": ">=${kotlin_loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}

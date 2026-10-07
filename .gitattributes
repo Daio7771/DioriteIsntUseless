@@ -1,0 +1,5 @@
+# gradlew debe tener finales de línea LF para funcionar en Linux/macOS.
+gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary
+*.png binary

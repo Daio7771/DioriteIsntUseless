@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "CCC",
+    "CCC"
+  ],
+  "key": {
+    "C": {
+      "item": "dioriteisntuseless:diorite_crystal"
+    }
+  },
+  "result": {
+    "item": "dioriteisntuseless:dioritine_ingot",
+    "count": 1
+  }
+}

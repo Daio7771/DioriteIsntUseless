@@ -1,0 +1,13 @@
+{
+  "type": "dioriteisntuseless:smelting",
+  "category": "misc",
+  "ingredient": {
+    "item": "minecraft:diorite"
+  },
+  "result": {
+    "item": "dioriteisntuseless:diorite_crystal",
+    "count": 6
+  },
+  "experience": 0.35,
+  "cookingtime": 200
+}
