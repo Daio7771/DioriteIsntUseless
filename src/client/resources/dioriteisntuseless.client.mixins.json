@@ -4,6 +4,7 @@
   "package": "daio7771.dioriteisntuseless.mixin.client",
   "compatibilityLevel": "JAVA_17",
   "client": [
+    "ItemAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -24,9 +24,9 @@ class DioritineAxeItem(properties: Item.Properties) :
         if (state.`is`(BlockTags.LOGS)) speed else NON_WOOD_SPEED
 
     /**
-     * Los troncos no gastan aquí: TreeFeller les cobra 0.5 a cada uno (también al que golpea
-     * el jugador) en cuanto se rompen, antes de que vanilla llame a este método.
-     * El resto de bloques gasta 1, como cualquier herramienta.
+     * Los troncos no gastan aquí: los cobra TreeFeller en cuanto se rompen (también el que golpea
+     * el jugador), antes de que vanilla llame a este método. Así la configuración se lee en un
+     * solo sitio. El resto de bloques gasta 1, como cualquier herramienta.
      */
     override fun mineBlock(stack: ItemStack, level: Level, state: BlockState, pos: BlockPos, miner: LivingEntity): Boolean {
         if (state.`is`(BlockTags.LOGS)) return true
@@ -40,19 +40,23 @@ class DioritineAxeItem(properties: Item.Properties) :
 
         private const val NON_WOOD_SPEED = 0.5f
 
-        /** Medios puntos de desgaste pendientes (0 o 1) en el NBT del hacha. */
+        /**
+         * Troncos rotos que aún no han gastado durabilidad, en el NBT del hacha.
+         * (Con logsPerDurabilityPoint = 2 equivale a los "medios puntos" de antes.)
+         */
         private const val WEAR_TAG = "DioritineWear"
-        private const val HALF_POINTS_PER_DAMAGE = 2
 
         /**
-         * Cobra 0.5 de durabilidad por un tronco roto. Es exacto y determinista: el medio punto
-         * se acumula en el NBT y cada dos troncos se convierte en 1 punto real de daño.
-         * En creativo no se gasta nada. Si el hacha se rompe, la pila queda vacía.
+         * Cobra un tronco roto: cada [logsPerDurabilityPoint] troncos, 1 punto real de daño.
+         * Es exacto y determinista: la cuenta se guarda en el NBT. Con 1 cobra 1 por tronco,
+         * como un hacha normal. En creativo no se gasta nada. Si el hacha se rompe, la pila
+         * queda vacía.
          */
-        fun addLogWear(stack: ItemStack, player: Player) {
+        fun addLogWear(stack: ItemStack, player: Player, logsPerDurabilityPoint: Int) {
             if (player.abilities.instabuild || stack.isEmpty) return
             val wear = (stack.tag?.getInt(WEAR_TAG) ?: 0) + 1
-            if (wear < HALF_POINTS_PER_DAMAGE) {
+            // Si se ha bajado logsPerDurabilityPoint, la cuenta guardada puede pasarse: también cobra.
+            if (wear < logsPerDurabilityPoint) {
                 stack.orCreateTag.putInt(WEAR_TAG, wear)
                 return
             }

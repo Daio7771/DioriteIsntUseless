@@ -32,6 +32,14 @@ loom {
             sourceSet("client")
         }
     }
+
+    runs {
+        // El servidor en su propia carpeta: así cliente y servidor tienen cada uno su config/ y se
+        // puede probar la sincronización con valores distintos en cada lado.
+        named("server") {
+            runDir = "run/server"
+        }
+    }
 }
 
 fabricApi {
@@ -46,6 +54,8 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
+    maven("https://maven.shedaniel.me/") { name = "Shedaniel" }  // Cloth Config
+    maven("https://maven.terraformersmc.com/releases/") { name = "TerraformersMC" }  // Mod Menu
 }
 
 dependencies {
@@ -56,6 +66,19 @@ dependencies {
     modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
 
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+
+    // Cloth Config y Mod Menu son opcionales ("suggests" en fabric.mod.json): se compila contra
+    // ellas, pero el mod funciona sin ellas. Solo dan la pantalla de configuración.
+    val clothConfig = "me.shedaniel.cloth:cloth-config-fabric:${project.property("cloth_config_version")}"
+    val modMenu = "com.terraformersmc:modmenu:${project.property("modmenu_version")}"
+    modCompileOnly(clothConfig) { exclude(group = "net.fabricmc.fabric-api") }
+    modCompileOnly(modMenu) { exclude(group = "net.fabricmc.fabric-api") }
+    // Se cargan en runClient/runServer para probar la pantalla. Para probar sin ellas:
+    // ./gradlew runClient -PnoOptionalMods
+    if (!project.hasProperty("noOptionalMods")) {
+        modLocalRuntime(clothConfig) { exclude(group = "net.fabricmc.fabric-api") }
+        modLocalRuntime(modMenu) { exclude(group = "net.fabricmc.fabric-api") }
+    }
 }
 
 tasks.processResources {

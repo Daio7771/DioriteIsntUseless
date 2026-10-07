@@ -1,5 +1,6 @@
 package daio7771.dioriteisntuseless.item
 
+import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.registry.ModItems
 import net.minecraft.world.item.Tier
 import net.minecraft.world.item.crafting.Ingredient
@@ -10,7 +11,8 @@ object DioritineTier : Tier {
     // Perezoso: el ítem del lingote se registra después de cargar esta clase.
     private val repairWith by lazy { Ingredient.of(ModItems.DIORITINE_INGOT) }
 
-    override fun getUses(): Int = 1000
+    /** axe.durability tal como estaba al arrancar: el hacha la fija al registrarse. */
+    override fun getUses(): Int = ModConfig.axeDurabilityAtStartup
 
     /** Velocidad en los bloques en los que la herramienta es eficaz (como el hierro). */
     override fun getSpeed(): Float = 6.0f

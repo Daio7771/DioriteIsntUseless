@@ -18,6 +18,9 @@
     ],
     "main": [
       "daio7771.dioriteisntuseless.Dioriteisntuseless"
+    ],
+    "modmenu": [
+      "daio7771.dioriteisntuseless.client.config.ModMenuIntegration"
     ]
   },
   "mixins": [
@@ -32,5 +35,9 @@
     "fabric-language-kotlin": ">=${kotlin_loader_version}",
     "fabric-api": "*",
     "minecraft": "${minecraft_version}"
+  },
+  "suggests": {
+    "cloth-config": ">=11.1.0",
+    "modmenu": ">=7.2.0"
   }
 }

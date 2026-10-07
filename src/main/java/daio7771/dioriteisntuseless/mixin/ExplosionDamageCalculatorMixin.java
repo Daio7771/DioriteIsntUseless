@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Resistencia a explosiones de la diorita: 6 -> 12.
+ * Resistencia a explosiones de la diorita (diorite.blastResistance; vanilla 6).
  *
  * No se cambia Block.getExplosionResistance() de Blocks.DIORITE porque StairBlock devuelve la
  * resistencia de su bloque base, y las escaleras de diorita también subirían a 12. En su lugar
@@ -26,6 +26,6 @@ public abstract class ExplosionDamageCalculatorMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/Block;getExplosionResistance()F")
     )
     private float dioriteisntuseless$dioriteResistance(float original, @Local(argsOnly = true) BlockState state) {
-        return state.is(Blocks.DIORITE) ? DioriteStats.EXPLOSION_RESISTANCE : original;
+        return state.is(Blocks.DIORITE) ? DioriteStats.explosionResistance(original) : original;
     }
 }
