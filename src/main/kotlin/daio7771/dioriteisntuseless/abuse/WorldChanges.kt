@@ -25,7 +25,8 @@ import java.util.UUID
  * "Start over". Se guarda con el mundo (data/dioriteisntuseless_world_changes.dat del Overworld).
  *
  * Todo cambio pasa por [change], que coloca el bloque y lo apunta a la vez: no hay forma de
- * cambiar el mundo sin dejarlo registrado. Al deshacer, cada bloque vuelve a ser el original solo
+ * cambiar el mundo sin dejarlo registrado. Cambios y restauraciones se hacen sin avisar a los
+ * vecinos (ver [SILENT]). Al deshacer, cada bloque vuelve a ser el original solo
  * si todavía es el que puso el mod; si el jugador lo cambió después, se respeta su cambio. Los
  * bloques en chunks sin cargar se restauran cuando se cargan (también tras reiniciar).
  *
@@ -75,6 +76,13 @@ class WorldChanges private constructor() : SavedData() {
         /** Cada cuánto se reintentan las restauraciones pendientes. */
         private const val RESTORE_INTERVAL = 20
 
+        /**
+         * Se manda a los clientes, pero sin avisar a los bloques vecinos: un observador pegado a
+         * un bloque que cambia no da pulso y ninguna máquina de redstone se dispara. No hace falta
+         * avisarlos: el mod solo cambia un bloque sólido por otro sólido, o aire por un cartel.
+         */
+        private const val SILENT = Block.UPDATE_CLIENTS or Block.UPDATE_KNOWN_SHAPE
+
         fun get(server: MinecraftServer): WorldChanges =
             server.overworld().dataStorage.computeIfAbsent(::load, ::WorldChanges, NAME)
 
@@ -90,7 +98,7 @@ class WorldChanges private constructor() : SavedData() {
             val existing = byPos[key]
             if (existing != null && existing.owner != owner) return false
             val current = level.getBlockState(pos)
-            if (!level.setBlock(pos, state, Block.UPDATE_ALL)) return false
+            if (!level.setBlock(pos, state, SILENT)) return false
             if (existing == null) {
                 byPos[key] = Change(owner, current, state)
             } else {
@@ -185,7 +193,7 @@ class WorldChanges private constructor() : SavedData() {
                 if (!level.isLoaded(pos)) continue  // se intentará cuando se cargue el chunk
                 // Solo si sigue siendo lo que puso el mod: si el jugador lo cambió, manda su cambio.
                 if (level.getBlockState(pos).`is`(change.placed.block)) {
-                    level.setBlock(pos, change.original, Block.UPDATE_ALL)
+                    level.setBlock(pos, change.original, SILENT)
                 }
                 iterator.remove()
                 restoringCount--

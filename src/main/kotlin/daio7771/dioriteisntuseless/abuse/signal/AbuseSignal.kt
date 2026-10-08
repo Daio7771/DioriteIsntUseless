@@ -12,8 +12,9 @@ interface AbuseSignal {
     /** Primer nivel en el que puede aparecer. */
     val minLevel: Int
 
-    /** false si ahora no puede ocurrir (por ejemplo, no hay frases o no hay sitio). */
+    /** false si ahora no puede ocurrir por algo barato de comprobar (por ejemplo, no hay frases). */
     fun canRun(player: ServerPlayer, state: PlayerAbuse): Boolean = true
 
-    fun run(player: ServerPlayer, state: PlayerAbuse)
+    /** Lanza la señal. False si al final no ha ocurrido nada (por ejemplo, no había sitio). */
+    fun run(player: ServerPlayer, state: PlayerAbuse): Boolean
 }

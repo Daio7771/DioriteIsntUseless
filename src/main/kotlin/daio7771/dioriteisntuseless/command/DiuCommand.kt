@@ -1,13 +1,16 @@
 package daio7771.dioriteisntuseless.command
 
 import com.mojang.brigadier.arguments.IntegerArgumentType
+import com.mojang.brigadier.arguments.StringArgumentType
 import daio7771.dioriteisntuseless.abuse.AbuseMode
 import daio7771.dioriteisntuseless.abuse.AbuseTracker
+import daio7771.dioriteisntuseless.abuse.signal.AbuseSignals
 import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.network.ConfigSync
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
+import net.minecraft.commands.SharedSuggestionProvider
 import net.minecraft.commands.arguments.EntityArgument
 import net.minecraft.commands.arguments.blocks.BlockStateArgument
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument
@@ -19,9 +22,9 @@ import java.util.Locale
 
 /**
  * /diu reload: vuelve a leer la configuración sin reiniciar.
- * /diu abuse <jugador> [nivel | signal | reset | change <pos> <bloque>]: para pruebas del Abuse
- * Mode; consulta o cambia el nivel, lanza una señal ya, hace "Start over" o hace un cambio en el
- * mundo registrado (para probar que "Start over" lo deshace).
+ * /diu abuse <jugador> [nivel | signal [tipo] | reset | change <pos> <bloque>]: para pruebas del
+ * Abuse Mode; consulta o cambia el nivel, lanza una señal ya (una concreta o al azar), hace
+ * "Start over" o hace un cambio en el mundo registrado (para probar que "Start over" lo deshace).
  * Solo operadores (nivel 2).
  */
 object DiuCommand {
@@ -42,7 +45,18 @@ object DiuCommand {
                                 .executes { showAbuse(it.source, EntityArgument.getPlayer(it, "player")) }
                                 .then(
                                     Commands.literal("signal")
-                                        .executes { forceSignal(it.source, EntityArgument.getPlayer(it, "player")) }
+                                        .executes { forceSignal(it.source, EntityArgument.getPlayer(it, "player"), null) }
+                                        .then(
+                                            Commands.argument("type", StringArgumentType.word())
+                                                .suggests { _, builder -> SharedSuggestionProvider.suggest(AbuseSignals.ids, builder) }
+                                                .executes {
+                                                    forceSignal(
+                                                        it.source,
+                                                        EntityArgument.getPlayer(it, "player"),
+                                                        StringArgumentType.getString(it, "type"),
+                                                    )
+                                                }
+                                        )
                                 )
                                 .then(
                                     Commands.literal("reset")
@@ -128,8 +142,8 @@ object DiuCommand {
         return level
     }
 
-    private fun forceSignal(source: CommandSourceStack, player: ServerPlayer): Int {
-        if (!AbuseTracker.forceSignal(source.server, player)) {
+    private fun forceSignal(source: CommandSourceStack, player: ServerPlayer, type: String?): Int {
+        if (!AbuseTracker.forceSignal(source.server, player, type)) {
             source.sendFailure(Component.translatable("$ABUSE_LANG.no_signal", player.displayName))
             return 0
         }

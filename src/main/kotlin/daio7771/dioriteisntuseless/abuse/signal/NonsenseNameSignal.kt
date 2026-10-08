@@ -39,7 +39,7 @@ object NonsenseNameSignal : AbuseSignal {
     override fun canRun(player: ServerPlayer, state: PlayerAbuse): Boolean =
         ServerPlayNetworking.canSend(player, NonsenseNamesPacket.TYPE) && candidates(player).isNotEmpty()
 
-    override fun run(player: ServerPlayer, state: PlayerAbuse) {
+    override fun run(player: ServerPlayer, state: PlayerAbuse): Boolean {
         val candidates = candidates(player).toMutableList()
         // Fisher-Yates con el azar del jugador.
         for (i in candidates.lastIndex downTo 1) {
@@ -53,6 +53,7 @@ object NonsenseNameSignal : AbuseSignal {
             NonsenseNamesPacket(false, candidates.take(count).map(::key), LEVEL_3_EXPOSURE, LEVEL_3_LIFETIME)
         }
         ServerPlayNetworking.send(player, packet)
+        return true
     }
 
     /** Quita todos los nombres sin sentido de ese jugador. */

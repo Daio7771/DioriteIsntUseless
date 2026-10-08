@@ -82,6 +82,12 @@ class PlayerAbuse {
     /** Última frase en Morse, por lo mismo. */
     var lastMorsePhrase = ""
 
+    /** Última palabra de cartel, por lo mismo. */
+    var lastSignWord = ""
+
+    /** [playTicks] cuando apareció EL cartel del nivel 4, o -1 si aún no ha aparecido. */
+    var finalSignPlacedAt = -1L
+
     /** Fase A del final: el hacha no tala y fundir diorita no le da cristales a este jugador. */
     var dioriteUseless = false
 
@@ -112,6 +118,8 @@ class PlayerAbuse {
         nextSignalAt = -1
         lastSignal = ""
         lastMorsePhrase = ""
+        lastSignWord = ""
+        finalSignPlacedAt = -1
         dioriteUseless = false
     }
 
@@ -126,6 +134,8 @@ class PlayerAbuse {
         tag.putLong("NextSignalAt", nextSignalAt)
         tag.putString("LastSignal", lastSignal)
         tag.putString("LastMorsePhrase", lastMorsePhrase)
+        tag.putString("LastSignWord", lastSignWord)
+        tag.putLong("FinalSignPlacedAt", finalSignPlacedAt)
         tag.putBoolean("DioriteUseless", dioriteUseless)
         tag.put("TakenItems", ListTag().apply { takenItems.forEach { add(it.save(CompoundTag())) } })
         tag.putBoolean("ReturnItemsOnJoin", returnItemsOnJoin)
@@ -144,6 +154,8 @@ class PlayerAbuse {
             nextSignalAt = if (tag.contains("NextSignalAt")) tag.getLong("NextSignalAt").coerceAtLeast(-1) else -1
             lastSignal = tag.getString("LastSignal")
             lastMorsePhrase = tag.getString("LastMorsePhrase")
+            lastSignWord = tag.getString("LastSignWord")
+            finalSignPlacedAt = if (tag.contains("FinalSignPlacedAt")) tag.getLong("FinalSignPlacedAt").coerceIn(-1, playTicks) else -1
             dioriteUseless = tag.getBoolean("DioriteUseless")
             for (item in tag.getList("TakenItems", Tag.TAG_COMPOUND.toInt())) {
                 // Un ítem de un mod que ya no está se lee como vacío: se pierde (no hay nada que devolver).

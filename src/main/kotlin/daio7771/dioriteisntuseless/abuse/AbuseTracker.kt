@@ -5,6 +5,7 @@ import daio7771.dioriteisntuseless.abuse.morse.MorseBeeper
 import daio7771.dioriteisntuseless.abuse.morse.MorsePhrases
 import daio7771.dioriteisntuseless.abuse.signal.AbuseSignals
 import daio7771.dioriteisntuseless.abuse.signal.NonsenseNameSignal
+import daio7771.dioriteisntuseless.abuse.text.SignWords
 import daio7771.dioriteisntuseless.config.DiuConfig
 import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.registry.ModItems
@@ -43,6 +44,7 @@ object AbuseTracker {
 
     fun init() {
         MorsePhrases.init()
+        SignWords.init()
         ServerLifecycleEvents.SERVER_STARTING.register { AbuseMode.resetSession() }
         // En un solo jugador el juego sigue abierto entre mundos: no se arrastra nada al siguiente.
         ServerLifecycleEvents.SERVER_STOPPED.register { MorseBeeper.clear() }
@@ -100,6 +102,7 @@ object AbuseTracker {
                     AbuseSignals.schedule(player, state)
                 }
                 AbuseSignals.tick(player, state)
+                FinalSign.tick(player, state)
             }
             data.setDirty()
         }
@@ -126,6 +129,8 @@ object AbuseTracker {
         val state = data.get(player.uuid)
         state.level = level.coerceIn(0, MAX_LEVEL)
         state.levelReachedAt = state.playTicks
+        // Por debajo del 4, volver al 4 vuelve a sacar EL cartel (el anterior sigue registrado).
+        if (state.level < MAX_LEVEL) state.finalSignPlacedAt = -1
         AbuseSignals.schedule(player, state)
         NonsenseNameSignal.clear(player)
         data.setDirty()
@@ -149,12 +154,12 @@ object AbuseTracker {
     fun worldChangeCount(server: MinecraftServer, player: ServerPlayer): Int = WorldChanges.get(server).count(player.uuid)
 
     /** Para el comando de pruebas: lanza una señal ya. Devuelve false si no hay ninguna posible. */
-    fun forceSignal(server: MinecraftServer, player: ServerPlayer): Boolean {
+    fun forceSignal(server: MinecraftServer, player: ServerPlayer, id: String?): Boolean {
         if (!AbuseMode.active) return false
         var ran = false
         AbuseMode.guard("forced signal") {
             val data = AbuseData.get(server)
-            ran = AbuseSignals.forceNow(player, data.get(player.uuid))
+            ran = AbuseSignals.forceNow(player, data.get(player.uuid), id)
             data.setDirty()
         }
         return ran

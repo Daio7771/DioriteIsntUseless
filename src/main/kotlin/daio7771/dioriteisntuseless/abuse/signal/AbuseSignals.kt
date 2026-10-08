@@ -12,7 +12,7 @@ import net.minecraft.server.level.ServerPlayer
  */
 object AbuseSignals {
 
-    private val SIGNALS: List<AbuseSignal> = listOf(MorseSignal, NonsenseNameSignal)
+    private val SIGNALS: List<AbuseSignal> = listOf(MorseSignal, NonsenseNameSignal, BlockSwapSignal, WordSignSignal)
 
     /**
      * Ticks jugados entre señales, por nivel (HORROR_DESIGN.md, apartado 4):
@@ -50,21 +50,42 @@ object AbuseSignals {
         state.nextSignalAt = state.playTicks + wait
     }
 
-    /** Para el comando de pruebas: lanza una señal ya. Devuelve false si no hay ninguna posible. */
-    fun forceNow(player: ServerPlayer, state: PlayerAbuse): Boolean {
+    /** Ids de las señales, para el comando de pruebas. */
+    val ids: List<String> get() = SIGNALS.map { it.id }
+
+    /**
+     * Para el comando de pruebas: lanza ya una señal ([id], o una al azar si es null), aunque sea
+     * de un nivel más alto. Devuelve false si no ha ocurrido (nivel 0, no hay sitio...).
+     */
+    fun forceNow(player: ServerPlayer, state: PlayerAbuse, id: String?): Boolean {
         if (state.level <= 0) return false
-        val ran = runOne(player, state)
+        val ran = if (id == null) {
+            runOne(player, state)
+        } else {
+            val signal = SIGNALS.firstOrNull { it.id == id } ?: return false
+            (signal.canRun(player, state) && signal.run(player, state)).also { if (it) state.lastSignal = signal.id }
+        }
         schedule(player, state)
         return ran
     }
 
+    /**
+     * Prueba las señales posibles en orden aleatorio, dejando la anterior para el final, hasta
+     * que una ocurra de verdad (una señal en el mundo puede no encontrar sitio).
+     */
     private fun runOne(player: ServerPlayer, state: PlayerAbuse): Boolean {
-        val candidates = SIGNALS.filter { state.level >= it.minLevel && it.canRun(player, state) }
-        if (candidates.isEmpty()) return false
-        val fresh = candidates.filter { it.id != state.lastSignal }.ifEmpty { candidates }
-        val signal = fresh[player.random.nextInt(fresh.size)]
-        signal.run(player, state)
-        state.lastSignal = signal.id
-        return true
+        val candidates = SIGNALS.filter { state.level >= it.minLevel && it.canRun(player, state) }.toMutableList()
+        for (i in candidates.lastIndex downTo 1) {
+            val j = player.random.nextInt(i + 1)
+            candidates[i] = candidates[j].also { candidates[j] = candidates[i] }
+        }
+        candidates.sortBy { it.id == state.lastSignal }  // estable: la anterior pasa al final
+        for (signal in candidates) {
+            if (signal.run(player, state)) {
+                state.lastSignal = signal.id
+                return true
+            }
+        }
+        return false
     }
 }

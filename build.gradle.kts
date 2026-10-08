@@ -56,6 +56,7 @@ repositories {
     // for more information about repositories.
     maven("https://maven.shedaniel.me/") { name = "Shedaniel" }  // Cloth Config
     maven("https://maven.terraformersmc.com/releases/") { name = "TerraformersMC" }  // Mod Menu
+    maven("https://maven.nucleoid.xyz/") { name = "Nucleoid" }  // Common Protection API
 }
 
 dependencies {
@@ -78,6 +79,12 @@ dependencies {
     if (!project.hasProperty("noOptionalMods")) {
         modLocalRuntime(clothConfig) { exclude(group = "net.fabricmc.fabric-api") }
         modLocalRuntime(modMenu) { exclude(group = "net.fabricmc.fabric-api") }
+    }
+
+    // Common Protection API, también opcional: si está instalada (la traen los mods de claims),
+    // el Abuse Mode respeta sus zonas protegidas. Solo se compila contra ella.
+    modCompileOnly("eu.pb4:common-protection-api:${project.property("common_protection_api_version")}") {
+        exclude(group = "net.fabricmc.fabric-api")
     }
 }
 
