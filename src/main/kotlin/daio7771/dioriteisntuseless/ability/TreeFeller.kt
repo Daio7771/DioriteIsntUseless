@@ -1,5 +1,6 @@
 package daio7771.dioriteisntuseless.ability
 
+import daio7771.dioriteisntuseless.abuse.AbuseTracker
 import daio7771.dioriteisntuseless.abuse.DioriteUselessness
 import daio7771.dioriteisntuseless.config.DiuConfig
 import daio7771.dioriteisntuseless.config.ModConfig
@@ -76,8 +77,12 @@ object TreeFeller {
             felling -= player.uuid
         }
         // Un árbol entero = una talada que rompe algo más que el tronco golpeado. Un tronco suelto
-        // no cuenta. Se cobra al final, con los drops ya en el suelo.
-        if (felled > 0) DioritineAxeItem.addFelledTree(axe, player, config.treesBeforeBreaking)
+        // no cuenta. Se cobra al final, con los drops ya en el suelo. También es lo que cuenta el
+        // Abuse Mode.
+        if (felled > 0) {
+            DioritineAxeItem.addFelledTree(axe, player, config.treesBeforeBreaking)
+            AbuseTracker.onTreeFelled(player)
+        }
     }
 
     /** Devuelve cuántos troncos ha roto, sin contar el golpeado. */

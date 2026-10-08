@@ -14,8 +14,8 @@ import net.minecraft.world.Container
 import net.minecraft.world.item.ItemStack
 
 /**
- * El final (HORROR_DESIGN.md, apartado 5). Empieza abuseMode.daysUntilEnding días de juego después
- * de EL cartel del nivel 4:
+ * El final (HORROR_DESIGN.md, apartado 5). Toca cuando, en el nivel 4 y con EL cartel ya puesto, el
+ * jugador ha talado abuseMode.treesUntilEnding árboles:
  *
  * - Fase A, "Diorite Is Useless": se le retiran las hachas, lingotes y cristales (inventario,
  *   armadura, mano secundaria, cofre de Ender, cursor y cuadrícula de fabricar) y se guardan para
@@ -51,10 +51,15 @@ object Ending {
     }
 
     /**
-     * Desde el tick del jugador (cada pocos ticks): la red de seguridad del medio día y, al acabar
-     * la fase B, el aviso a su cliente de que tocan los créditos.
+     * Desde el tick del jugador (cada pocos ticks): apunta cuándo empieza a tocar el final, la red
+     * de seguridad del medio día y, al acabar la fase B, el aviso a su cliente de que tocan los créditos.
      */
     fun tick(player: ServerPlayer, state: PlayerAbuse) {
+        if (state.level == AbuseTracker.MAX_LEVEL && state.endingDueAt < 0 && state.finalSignPlacedAt >= 0 &&
+            state.treesAtLevel >= ModConfig.current.abuseMode.treesUntilEnding
+        ) {
+            state.endingDueAt = state.playTicks
+        }
         val due = dueAt(state)
         if (due >= 0 && state.playTicks >= due + FALLBACK_TICKS) start(player, state)
         if (!state.creditsAnnounced && creditsDue(state)) {
@@ -100,16 +105,14 @@ object Ending {
         return due >= 0 && state.playTicks >= due
     }
 
-    /** playTicks en que toca el final, o -1 si aún no está en el nivel 4 con el cartel puesto. */
-    private fun dueAt(state: PlayerAbuse): Long {
-        if (state.level != AbuseTracker.MAX_LEVEL || state.finalSignPlacedAt < 0) return -1
-        return state.finalSignPlacedAt + ModConfig.current.abuseMode.daysUntilEnding * AbuseTracker.TICKS_PER_DAY
-    }
+    /** playTicks en que empezó a tocar el final, o -1 si aún no toca. */
+    private fun dueAt(state: PlayerAbuse): Long =
+        if (state.level == AbuseTracker.MAX_LEVEL) state.endingDueAt else -1
 
     /** Fase A y comienzo de la fase B. También lo usa el comando de pruebas. */
     fun start(player: ServerPlayer, state: PlayerAbuse) {
         state.level = AbuseTracker.LEVEL_FINAL
-        state.levelReachedAt = state.playTicks
+        state.treesAtLevel = 0
         state.endingStartedAt = state.playTicks
         state.dioriteUseless = true
         val taken = takeItems(player, state)

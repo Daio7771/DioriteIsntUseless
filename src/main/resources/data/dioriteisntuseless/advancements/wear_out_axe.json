@@ -1,0 +1,29 @@
+{
+  "parent": "minecraft:story/mine_stone",
+  "display": {
+    "icon": {
+      "item": "dioriteisntuseless:dioritine_axe"
+    },
+    "title": {
+      "translate": "advancements.dioriteisntuseless.wear_out_axe.title"
+    },
+    "description": {
+      "translate": "advancements.dioriteisntuseless.wear_out_axe.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "wore_out_axe": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "wore_out_axe"
+    ]
+  ],
+  "sends_telemetry_event": false
+}

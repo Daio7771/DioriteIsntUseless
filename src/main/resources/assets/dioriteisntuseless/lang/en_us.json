@@ -7,7 +7,7 @@
   "commands.dioriteisntuseless.reload.restart_required": "axe.durability is now %s, but the axe keeps %s until the server restarts.",
   "commands.dioriteisntuseless.reload.invalid_json": "The config file is not valid JSON, so nothing was changed and the previous values are still in use. See the server log for the line and column of the error.",
   "commands.dioriteisntuseless.reload.read_error": "Could not read the config file, so the previous values are still in use. See the server log for details.",
-  "commands.dioriteisntuseless.abuse.status": "%s: level %s, score %s (diorite %s, stone %s, logs %s, axes %s), %s days at this level, %s world change(s), %s item(s) held back.",
+  "commands.dioriteisntuseless.abuse.status": "%s: level %s, %s tree(s) felled, %s of %s at this level, %s world change(s), %s item(s) held back.",
   "commands.dioriteisntuseless.abuse.credits": "The credits are now due for %s: they open the next time they sleep or open the pause menu.",
   "commands.dioriteisntuseless.abuse.reset": "Started over for %s: world changes undone, items returned, level and counters set to 0.",
   "commands.dioriteisntuseless.abuse.reset_failed": "Could not start over because of an internal error. See the server log.",
@@ -65,7 +65,10 @@
   "config.dioriteisntuseless.abuseMode.enabled": "Abuse mode",
   "config.dioriteisntuseless.abuseMode.enabled.tooltip": "The mod reacts when diorite is abused. Disable it if you only want the tools and blocks.",
   "config.dioriteisntuseless.abuseMode.advanced": "Advanced",
-  "config.dioriteisntuseless.abuseMode.threshold": "Stage %s threshold",
-  "config.dioriteisntuseless.abuseMode.minDays": "Stage %s minimum days",
-  "config.dioriteisntuseless.abuseMode.daysUntilEnding": "Final stage delay (days)"
+  "config.dioriteisntuseless.abuseMode.treesPerLevel": "Stage %s trees",
+  "config.dioriteisntuseless.abuseMode.treesPerLevel.tooltip": "Whole trees felled with the Dioritine Axe, after reaching the previous stage, to reach this one. Range: 1 to 1000.",
+  "config.dioriteisntuseless.abuseMode.treesUntilEnding": "Final stage trees",
+  "config.dioriteisntuseless.abuseMode.treesUntilEnding.tooltip": "Whole trees felled with the Dioritine Axe, after reaching stage 4, to reach the final stage. Range: 1 to 1000.",
+  "advancements.dioriteisntuseless.wear_out_axe.title": "Diorite Isn't Useless!",
+  "advancements.dioriteisntuseless.wear_out_axe.description": "Wear out a Dioritine Axe. Congratulations on putting diorite to good use!"
 }

@@ -8,7 +8,6 @@ import daio7771.dioriteisntuseless.abuse.signal.NonsenseNameSignal
 import daio7771.dioriteisntuseless.abuse.text.SignWords
 import daio7771.dioriteisntuseless.config.DiuConfig
 import daio7771.dioriteisntuseless.config.ModConfig
-import daio7771.dioriteisntuseless.registry.ModItems
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
@@ -16,31 +15,25 @@ import net.minecraft.core.BlockPos
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
-import net.minecraft.stats.Stat
-import net.minecraft.stats.Stats
-import net.minecraft.tags.BlockTags
-import net.minecraft.world.level.block.Block
-import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 
 /**
- * Cuenta el abuso de cada jugador y sube su nivel (HORROR_DESIGN.md, apartado 3).
+ * Cuenta el abuso de cada jugador y sube su nivel.
  *
- * Los contadores salen de las estadísticas vanilla en el momento en que se conceden (ver
- * ServerPlayerMixin): "bloque minado" y "objeto fabricado" ya cubren todas las formas normales de
- * minar o fabricar, incluidas la talada del hacha y el Shift+clic en la mesa, y siguen las mismas
- * reglas (en creativo no cuentan). Se guardan contadores propios en vez de leer las estadísticas
- * porque "Start over" tiene que poder ponerlos a 0 sin tocar las estadísticas del jugador.
+ * El abuso son los árboles enteros talados con el hacha de dioritina (los cuenta TreeFeller, igual
+ * que el límite de árboles del hacha; en creativo no cuentan). Cada nivel pide talar
+ * abuseMode.treesPerLevel árboles desde el anterior, sin tiempo mínimo: el mod se harta en cuanto
+ * se abusa de él.
  *
  * Todo ocurre en el hilo del servidor.
  */
 object AbuseTracker {
 
     const val TICKS_PER_DAY = 24_000L
-    /** Último nivel al que se sube por puntuación (el del cartel). */
+    /** Último nivel al que se sube por árboles (el del cartel). */
     const val MAX_LEVEL = DiuConfig.AbuseMode.LEVELS
 
-    /** El final (fases A y B, y después los créditos). Se llega desde el 4, no por puntuación. */
+    /** El final (fases A y B, y después los créditos). Se llega desde el 4 (ver Ending). */
     const val LEVEL_FINAL = MAX_LEVEL + 1
 
     /** Cada cuánto (en ticks jugados) se comprueba si sube de nivel. */
@@ -68,29 +61,27 @@ object AbuseTracker {
         }
     }
 
-    /** Lo llama ServerPlayerMixin cada vez que el jugador recibe una estadística. */
-    @JvmStatic
-    fun onStatAwarded(player: ServerPlayer, stat: Stat<*>, amount: Int) {
-        if (amount <= 0 || !AbuseMode.active) return
-        AbuseMode.guard("stat counting") {
-            val type = stat.type
-            val value = stat.value
-            if (type == Stats.BLOCK_MINED && value is Block) {
-                onBlockMined(player, value, amount)
-            } else if (type == Stats.ITEM_CRAFTED && value == ModItems.DIORITINE_AXE) {
-                data(player).get(player.uuid).axesCrafted += amount
-            }
+    /** Lo llama TreeFeller cada vez que [player] tala un árbol entero con el hacha. */
+    fun onTreeFelled(player: ServerPlayer) {
+        if (player.abilities.instabuild || !AbuseMode.active) return
+        AbuseMode.guard("tree counting") {
+            val data = AbuseData.get(player.server)
+            val state = data.get(player.uuid)
+            state.treesFelled++
+            state.treesAtLevel++
+            AbuseSignals.onTreeFelled(player, state)
+            data.setDirty()
         }
     }
 
-    private fun onBlockMined(player: ServerPlayer, block: Block, amount: Int) {
-        when {
-            block == Blocks.DIORITE -> data(player).get(player.uuid).dioriteMined += amount
-            block == Blocks.STONE || block == Blocks.DEEPSLATE -> data(player).get(player.uuid).stoneMined += amount
-            // Talado con el hacha: el jugador la lleva en la mano mientras se rompe el tronco.
-            block.defaultBlockState().`is`(BlockTags.LOGS) && player.mainHandItem.`is`(ModItems.DIORITINE_AXE) ->
-                data(player).get(player.uuid).logsFelled += amount
-        }
+    /**
+     * Árboles que tiene que talar en su nivel para el siguiente paso (subir de nivel o, en el 4,
+     * el final), o null si ya está en el final.
+     */
+    fun treesNeeded(state: PlayerAbuse, config: DiuConfig.AbuseMode = ModConfig.current.abuseMode): Int? = when {
+        state.level < MAX_LEVEL -> config.treesPerLevel[state.level]
+        state.level == MAX_LEVEL -> config.treesUntilEnding
+        else -> null
     }
 
     private fun onServerTick(server: MinecraftServer) {
@@ -124,22 +115,19 @@ object AbuseTracker {
     }
 
     /**
-     * Sube un nivel si se cumplen las tres condiciones: puntuación, más diorita que piedra minada
-     * y tiempo mínimo desde el nivel anterior. Como mucho un nivel cada vez.
+     * Sube un nivel si ha talado en este los árboles que pide. Como mucho un nivel cada vez; la
+     * cuenta del nuevo nivel empieza en 0. Del 4 al final no se sube aquí (ver Ending).
      */
     private fun tryLevelUp(state: PlayerAbuse, config: DiuConfig.AbuseMode): Boolean {
-        val index = state.level
-        if (index >= MAX_LEVEL) return false
-        if (state.score < config.levelThresholds[index]) return false
-        if (state.dioriteMined <= state.stoneMined) return false
-        if (state.playTicks - state.levelReachedAt < config.minDaysBetweenLevels[index] * TICKS_PER_DAY) return false
+        if (state.level >= MAX_LEVEL) return false
+        if (state.treesAtLevel < config.treesPerLevel[state.level]) return false
         state.level++
-        state.levelReachedAt = state.playTicks
+        state.treesAtLevel = 0
         return true
     }
 
     /**
-     * Para el comando de pruebas: pone el nivel directamente y reinicia la cuenta de días.
+     * Para el comando de pruebas: pone el nivel directamente y reinicia la cuenta de árboles del nivel.
      * [LEVEL_FINAL] hace ya la fase A (sin esperar a que entre o duerma). Salir del final así
      * no devuelve lo retirado: para eso está "Start over".
      */
@@ -152,9 +140,10 @@ object AbuseTracker {
             if (state.level != LEVEL_FINAL) Ending.start(player, state)
         } else {
             state.level = target
-            state.levelReachedAt = state.playTicks
+            state.treesAtLevel = 0
             // Por debajo del 4, volver al 4 vuelve a sacar EL cartel (el anterior sigue registrado).
             if (target < MAX_LEVEL) state.finalSignPlacedAt = -1
+            state.endingDueAt = -1
             state.endingStartedAt = -1
             state.dioriteUseless = false
             AbuseStateSync.sync(player)
@@ -204,6 +193,4 @@ object AbuseTracker {
     }
 
     fun state(server: MinecraftServer, player: ServerPlayer): PlayerAbuse = AbuseData.get(server).get(player.uuid)
-
-    private fun data(player: ServerPlayer): AbuseData = AbuseData.get(player.server).also { it.setDirty() }
 }

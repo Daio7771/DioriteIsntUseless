@@ -146,33 +146,25 @@ object DiuConfigScreen {
                     .setSaveConsumer { abuseMode = abuseMode.copy(enabled = it) }
                     .build()
             )
-            // Umbrales y tiempos: discretos, en una subsección plegada.
+            // Árboles por nivel: discretos, en una subsección plegada.
             val advanced = entries.startSubCategory(text("abuseMode.advanced")).setExpanded(false)
             for (i in 0 until DiuConfig.AbuseMode.LEVELS) {
-                advanced += entries.startIntField(text("abuseMode.threshold", i + 1), current.abuseMode.levelThresholds[i])
-                    .setDefaultValue(defaults.abuseMode.levelThresholds[i])
-                    .setMin(DiuConfig.Limits.ABUSE_THRESHOLD.first)
-                    .setMax(DiuConfig.Limits.ABUSE_THRESHOLD.last)
+                advanced += entries.startIntField(text("abuseMode.treesPerLevel", i + 1), current.abuseMode.treesPerLevel[i])
+                    .setDefaultValue(defaults.abuseMode.treesPerLevel[i])
+                    .setMin(DiuConfig.Limits.ABUSE_TREES.first)
+                    .setMax(DiuConfig.Limits.ABUSE_TREES.last)
+                    .setTooltip(text("abuseMode.treesPerLevel.tooltip"))
                     .setSaveConsumer { value ->
-                        abuseMode = abuseMode.copy(levelThresholds = abuseMode.levelThresholds.with(i, value))
+                        abuseMode = abuseMode.copy(treesPerLevel = abuseMode.treesPerLevel.with(i, value))
                     }
                     .build()
             }
-            for (i in 0 until DiuConfig.AbuseMode.LEVELS) {
-                advanced += entries.startIntField(text("abuseMode.minDays", i + 1), current.abuseMode.minDaysBetweenLevels[i])
-                    .setDefaultValue(defaults.abuseMode.minDaysBetweenLevels[i])
-                    .setMin(DiuConfig.Limits.ABUSE_DAYS.first)
-                    .setMax(DiuConfig.Limits.ABUSE_DAYS.last)
-                    .setSaveConsumer { value ->
-                        abuseMode = abuseMode.copy(minDaysBetweenLevels = abuseMode.minDaysBetweenLevels.with(i, value))
-                    }
-                    .build()
-            }
-            advanced += entries.startIntField(text("abuseMode.daysUntilEnding"), current.abuseMode.daysUntilEnding)
-                .setDefaultValue(defaults.abuseMode.daysUntilEnding)
-                .setMin(DiuConfig.Limits.ABUSE_DAYS.first)
-                .setMax(DiuConfig.Limits.ABUSE_DAYS.last)
-                .setSaveConsumer { abuseMode = abuseMode.copy(daysUntilEnding = it) }
+            advanced += entries.startIntField(text("abuseMode.treesUntilEnding"), current.abuseMode.treesUntilEnding)
+                .setDefaultValue(defaults.abuseMode.treesUntilEnding)
+                .setMin(DiuConfig.Limits.ABUSE_TREES.first)
+                .setMax(DiuConfig.Limits.ABUSE_TREES.last)
+                .setTooltip(text("abuseMode.treesUntilEnding.tooltip"))
+                .setSaveConsumer { abuseMode = abuseMode.copy(treesUntilEnding = it) }
                 .build()
             addEntry(advanced.build())
         }

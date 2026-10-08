@@ -17,7 +17,7 @@ import java.math.BigDecimal
 internal object ConfigCodec {
 
     /** Sube cuando cambie el formato del archivo y haya que migrar los de versiones anteriores. */
-    const val CURRENT_VERSION = 1
+    const val CURRENT_VERSION = 2
 
     private const val VERSION_KEY = "configVersion"
 
@@ -68,14 +68,11 @@ internal object ConfigCodec {
             ),
             abuseMode = DiuConfig.AbuseMode(
                 enabled = reader.boolean(abuseMode, "enabled", defaults.abuseMode.enabled),
-                levelThresholds = reader.intList(
-                    abuseMode, "levelThresholds", defaults.abuseMode.levelThresholds, DiuConfig.Limits.ABUSE_THRESHOLD,
+                treesPerLevel = reader.intList(
+                    abuseMode, "treesPerLevel", defaults.abuseMode.treesPerLevel, DiuConfig.Limits.ABUSE_TREES,
                 ),
-                minDaysBetweenLevels = reader.intList(
-                    abuseMode, "minDaysBetweenLevels", defaults.abuseMode.minDaysBetweenLevels, DiuConfig.Limits.ABUSE_DAYS,
-                ),
-                daysUntilEnding = reader.int(
-                    abuseMode, "daysUntilEnding", defaults.abuseMode.daysUntilEnding, DiuConfig.Limits.ABUSE_DAYS,
+                treesUntilEnding = reader.int(
+                    abuseMode, "treesUntilEnding", defaults.abuseMode.treesUntilEnding, DiuConfig.Limits.ABUSE_TREES,
                 ),
             ),
             client = DiuConfig.Client(
@@ -107,9 +104,8 @@ internal object ConfigCodec {
         }
         section(root, "abuseMode").apply {
             addProperty("enabled", config.abuseMode.enabled)
-            add("levelThresholds", intArray(config.abuseMode.levelThresholds))
-            add("minDaysBetweenLevels", intArray(config.abuseMode.minDaysBetweenLevels))
-            addProperty("daysUntilEnding", config.abuseMode.daysUntilEnding)
+            add("treesPerLevel", intArray(config.abuseMode.treesPerLevel))
+            addProperty("treesUntilEnding", config.abuseMode.treesUntilEnding)
         }
         section(root, "client").apply {
             addProperty("warningShown", config.client.warningShown)
@@ -152,7 +148,36 @@ internal object ConfigCodec {
                         "Reading the options this version knows; the rest are left untouched.",
                     VERSION_KEY, element, CURRENT_VERSION,
                 )
-                // Aquí irán las migraciones de versiones anteriores cuando CURRENT_VERSION suba.
+                version < BigDecimal(CURRENT_VERSION) -> migrate(version.intValueExact())
+            }
+        }
+
+        /** Convierte un archivo de una versión anterior, paso a paso, hasta [CURRENT_VERSION]. */
+        private fun migrate(from: Int) {
+            if (from < 2) migrateToVersion2()
+            root.addProperty(VERSION_KEY, CURRENT_VERSION)
+            treeChanged = true
+        }
+
+        /**
+         * Versión 2: el Abuse Mode avanza por árboles talados. La puntuación y los días ya no
+         * existen y sus opciones se quitan. El hacha pasa a aguantar 17 árboles en vez de 7, salvo
+         * que se hubiera cambiado ese valor.
+         */
+        private fun migrateToVersion2() {
+            val abuseMode = root.get("abuseMode") as? JsonObject
+            val removed = listOf("levelThresholds", "minDaysBetweenLevels", "daysUntilEnding")
+                .filter { abuseMode?.remove(it) != null }
+            if (removed.isNotEmpty()) {
+                LOGGER.info("Config: removed abuseMode.{}; the abuse mode now advances by trees felled (abuseMode.treesPerLevel).",
+                    removed.joinToString(", abuseMode."))
+            }
+            val treeFelling = root.get("treeFelling") as? JsonObject ?: return
+            val old = DiuConfig.TreeFelling.OLD_DEFAULT_TREES_BEFORE_BREAKING
+            if (treeFelling.get("treesBeforeBreaking")?.asNumberOrNull()?.compareTo(BigDecimal(old)) == 0) {
+                val new = DiuConfig().treeFelling.treesBeforeBreaking
+                treeFelling.addProperty("treesBeforeBreaking", new)
+                LOGGER.info("Config: treeFelling.treesBeforeBreaking had the old default value {}; it is now {}.", old, new)
             }
         }
 

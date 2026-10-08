@@ -21,7 +21,6 @@ import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.block.state.BlockState
-import java.util.Locale
 
 /**
  * /diu reload: vuelve a leer la configuración sin reiniciar.
@@ -135,9 +134,8 @@ object DiuCommand {
         val state = AbuseTracker.state(source.server, player)
         source.sendSuccess({
             Component.translatable(
-                "$ABUSE_LANG.status", player.displayName, state.level, state.score,
-                state.dioriteMined, state.stoneMined, state.logsFelled, state.axesCrafted,
-                String.format(Locale.ROOT, "%.2f", state.daysAtLevel),
+                "$ABUSE_LANG.status", player.displayName, state.level, state.treesFelled, state.treesAtLevel,
+                AbuseTracker.treesNeeded(state)?.toString() ?: "-",
                 AbuseTracker.worldChangeCount(source.server, player), state.takenItems.size,
             )
         }, false)

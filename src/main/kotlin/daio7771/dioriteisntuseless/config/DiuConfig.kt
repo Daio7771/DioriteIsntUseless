@@ -39,8 +39,13 @@ data class DiuConfig(
          * Árboles enteros que tala un hacha antes de romperse; 0 = sin límite. Reparar en el
          * yunque con lingotes reinicia la cuenta. Se sincroniza con los clientes (para la barra).
          */
-        val treesBeforeBreaking: Int = 7,
-    )
+        val treesBeforeBreaking: Int = 17,
+    ) {
+        companion object {
+            /** Valor por defecto hasta la versión 1 del archivo; ConfigCodec lo migra al nuevo. */
+            const val OLD_DEFAULT_TREES_BEFORE_BREAKING = 7
+        }
+    }
 
     data class Axe(
         /** Solo se aplica al arrancar: la durabilidad máxima se fija al registrar el ítem. */
@@ -53,15 +58,16 @@ data class DiuConfig(
     data class AbuseMode(
         /** false: no se cuenta nada y no hay señales. No deshace lo ya hecho. */
         val enabled: Boolean = true,
-        /** Puntuación de abuso necesaria para cada nivel (1 a 4). */
-        val levelThresholds: List<Int> = listOf(256, 640, 1280, 2048),
-        /** Días de juego (del jugador) que tienen que pasar desde el nivel anterior. */
-        val minDaysBetweenLevels: List<Int> = listOf(1, 2, 2, 3),
-        /** Días de juego desde el cartel del nivel 4 hasta el final. */
-        val daysUntilEnding: Int = 1,
+        /**
+         * Árboles enteros que hay que talar con el hacha en cada nivel (0 a 3) para pasar al
+         * siguiente (1 a 4). Se cuentan desde que se llegó al nivel en que se está.
+         */
+        val treesPerLevel: List<Int> = listOf(17, 20, 22, 24),
+        /** Árboles enteros que hay que talar en el nivel 4 para llegar al final (además de EL cartel). */
+        val treesUntilEnding: Int = 26,
     ) {
         companion object {
-            /** Tamaño de levelThresholds y minDaysBetweenLevels. */
+            /** Tamaño de treesPerLevel. */
             const val LEVELS = 4
         }
     }
@@ -80,8 +86,7 @@ data class DiuConfig(
         val LOGS_PER_DURABILITY_POINT = 1..10
         val TREES_BEFORE_BREAKING = 0..1000
         val AXE_DURABILITY = 1..10000
-        val ABUSE_THRESHOLD = 1..1_000_000
-        val ABUSE_DAYS = 0..365
+        val ABUSE_TREES = 1..1000
     }
 }
 
