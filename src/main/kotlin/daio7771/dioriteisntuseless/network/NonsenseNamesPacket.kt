@@ -11,6 +11,8 @@ import net.minecraft.resources.ResourceLocation
  * Es solo visual: el cliente cambia cómo se muestra el nombre de esos ítems, nunca el ítem.
  *
  * - [clear] = true: quitar todos los nombres sin sentido (al cambiar de nivel o con "Start over").
+ * - [everything] = true (versión 2): fase B del final, todos los ítems salvo la diorita y los del
+ *   mod, hasta un [clear].
  * - Si no: mostrar [items] con nombres sin sentido hasta que el jugador los haya tenido a la vista
  *   [exposureTicks] (con un inventario abierto) o pasen [lifetimeTicks].
  *
@@ -21,20 +23,24 @@ class NonsenseNamesPacket(
     val items: List<ResourceLocation> = emptyList(),
     val exposureTicks: Int = 0,
     val lifetimeTicks: Int = 0,
+    val everything: Boolean = false,
 ) : FabricPacket {
 
     override fun write(buf: FriendlyByteBuf) {
         buf.writeVarInt(VERSION)
+        // Versión 1
         buf.writeBoolean(clear)
         buf.writeCollection(items, FriendlyByteBuf::writeResourceLocation)
         buf.writeVarInt(exposureTicks)
         buf.writeVarInt(lifetimeTicks)
+        // Versión 2
+        buf.writeBoolean(everything)
     }
 
     override fun getType(): PacketType<NonsenseNamesPacket> = TYPE
 
     companion object {
-        const val VERSION = 1
+        const val VERSION = 2
 
         /** Capacidad inicial máxima al leer: un tamaño absurdo no reserva memoria de golpe. */
         private const val MAX_ITEMS = 4096
@@ -43,13 +49,16 @@ class NonsenseNamesPacket(
 
         fun clearAll() = NonsenseNamesPacket(clear = true)
 
+        fun everything() = NonsenseNamesPacket(clear = false, everything = true)
+
         private fun read(buf: FriendlyByteBuf): NonsenseNamesPacket {
-            buf.readVarInt()
+            val version = buf.readVarInt()
             val packet = NonsenseNamesPacket(
                 clear = buf.readBoolean(),
                 items = buf.readCollection({ size -> ArrayList(minOf(size, MAX_ITEMS)) }, FriendlyByteBuf::readResourceLocation),
                 exposureTicks = buf.readVarInt(),
                 lifetimeTicks = buf.readVarInt(),
+                everything = version >= 2 && buf.readBoolean(),
             )
             buf.skipBytes(buf.readableBytes())
             return packet

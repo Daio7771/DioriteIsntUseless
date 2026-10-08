@@ -1,5 +1,6 @@
 package daio7771.dioriteisntuseless.ability
 
+import daio7771.dioriteisntuseless.abuse.DioriteUselessness
 import daio7771.dioriteisntuseless.config.DiuConfig
 import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.item.DioritineAxeItem
@@ -57,7 +58,8 @@ object TreeFeller {
         if (!axe.`is`(ModItems.DIORITINE_AXE) || !state.`is`(BlockTags.LOGS)) return
 
         val config = ModConfig.current.treeFelling
-        if (!config.enabled) {
+        // Fase A del final del Abuse Mode: en manos de ese jugador, ninguna hacha tala.
+        if (!config.enabled || DioriteUselessness.isUseless(player)) {
             // Hacha normal: 1 de durabilidad por tronco, como vanilla.
             DioritineAxeItem.addLogWear(axe, player, 1)
             return

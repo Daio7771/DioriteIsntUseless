@@ -1,5 +1,6 @@
 package daio7771.dioriteisntuseless.abuse.signal
 
+import daio7771.dioriteisntuseless.abuse.AbuseTracker
 import daio7771.dioriteisntuseless.abuse.PlayerAbuse
 import daio7771.dioriteisntuseless.abuse.WorldChanges
 import daio7771.dioriteisntuseless.abuse.world.AbuseProtection
@@ -14,15 +15,17 @@ import kotlin.math.sqrt
 /**
  * Bloques que cambian (nivel 3 en adelante): el jugador vuelve a mirar una pared y ya no es igual.
  *
- * Unos pocos bloques de construcción a 8–24 bloques del jugador cambian por otro de su familia
- * (BlockFamilies). Solo bloques con alguna cara al aire (los que se pueden ver), nunca a la vista
- * de nadie, respetando las protecciones, y siempre registrados para "Start over".
+ * Unos pocos bloques de construcción (1–4; en el final, 4–12) a 8–24 bloques del jugador
+ * cambian por otro de su familia (BlockFamilies). Solo bloques con alguna cara al aire (los que
+ * se pueden ver), nunca a la vista de nadie, respetando las protecciones, y siempre registrados
+ * para "Start over".
  */
 object BlockSwapSignal : AbuseSignal {
 
     private const val MIN_DISTANCE = 8.0
     private const val MAX_DISTANCE = 24.0
     private val LEVEL_3_BLOCKS = 1..4
+    private val FINAL_BLOCKS = 4..12
 
     /** Posiciones al azar que se miran como mucho por señal. */
     private const val ATTEMPTS = 600
@@ -35,7 +38,8 @@ object BlockSwapSignal : AbuseSignal {
         if (families.isEmpty()) return false
         val level = player.serverLevel()
         val random = player.random
-        val wanted = LEVEL_3_BLOCKS.first + random.nextInt(LEVEL_3_BLOCKS.last - LEVEL_3_BLOCKS.first + 1)
+        val range = if (state.level >= AbuseTracker.LEVEL_FINAL) FINAL_BLOCKS else LEVEL_3_BLOCKS
+        val wanted = range.first + random.nextInt(range.last - range.first + 1)
         val origin = player.blockPosition()
         val pos = BlockPos.MutableBlockPos()
         var changed = 0

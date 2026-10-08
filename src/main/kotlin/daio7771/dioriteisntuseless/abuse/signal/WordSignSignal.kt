@@ -26,6 +26,9 @@ object WordSignSignal : AbuseSignal {
     override val id = "word_sign"
     override val minLevel = 3
 
+    /** En el final (apartado 5.2) solo hay nombres, bloques y Morse. */
+    override val maxLevel = 4
+
     override fun canRun(player: ServerPlayer, state: PlayerAbuse): Boolean = SignWords.words.isNotEmpty()
 
     override fun run(player: ServerPlayer, state: PlayerAbuse): Boolean {

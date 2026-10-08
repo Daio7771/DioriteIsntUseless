@@ -16,13 +16,14 @@ object AbuseSignals {
 
     /**
      * Ticks jugados entre señales, por nivel (HORROR_DESIGN.md, apartado 4):
-     * nivel 1, 0–1 al día; nivel 2, 1–2; niveles 3 y 4, 2–3.
+     * nivel 1, 0–1 al día; nivel 2, 1–2; niveles 3 y 4, 2–3; final, 3–5.
      */
     private val INTERVALS: List<LongRange> = listOf(
         24_000L..60_000L,
         12_000L..24_000L,
         8_000L..12_000L,
         8_000L..12_000L,
+        4_800L..8_000L,
     )
 
     /** Si toca, lanza una señal y programa la siguiente. */
@@ -74,7 +75,7 @@ object AbuseSignals {
      * que una ocurra de verdad (una señal en el mundo puede no encontrar sitio).
      */
     private fun runOne(player: ServerPlayer, state: PlayerAbuse): Boolean {
-        val candidates = SIGNALS.filter { state.level >= it.minLevel && it.canRun(player, state) }.toMutableList()
+        val candidates = SIGNALS.filter { state.level in it.minLevel..it.maxLevel && it.canRun(player, state) }.toMutableList()
         for (i in candidates.lastIndex downTo 1) {
             val j = player.random.nextInt(i + 1)
             candidates[i] = candidates[j].also { candidates[j] = candidates[i] }

@@ -28,7 +28,7 @@ object FinalSign {
     private val LINES = (1..4).map { Component.translatable("sign.dioriteisntuseless.final.$it") }
 
     fun tick(player: ServerPlayer, state: PlayerAbuse) {
-        if (state.level < AbuseTracker.MAX_LEVEL || state.finalSignPlacedAt >= 0) return
+        if (state.level != AbuseTracker.MAX_LEVEL || state.finalSignPlacedAt >= 0) return
         if (state.playTicks % RETRY_INTERVAL != 0L) return
         if (tryPlace(player)) state.finalSignPlacedAt = state.playTicks
     }

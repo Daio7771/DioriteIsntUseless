@@ -24,11 +24,15 @@ object MorseSignal : AbuseSignal {
     override fun run(player: ServerPlayer, state: PlayerAbuse): Boolean {
         val phrases = MorsePhrases.phrases
         val options = phrases.filter { it.text != state.lastMorsePhrase }.ifEmpty { phrases }
-        val phrase = options[player.random.nextInt(options.size)]
+        send(player, state, options[player.random.nextInt(options.size)])
+        return true
+    }
+
+    /** Manda [phrase] (con pitidos desde el nivel 2). También lo usa el final. */
+    fun send(player: ServerPlayer, state: PlayerAbuse, phrase: MorsePhrases.Phrase) {
         state.lastMorsePhrase = phrase.text
         // Mensaje de sistema: sin "<nombre>" delante, y no queda en el log del servidor.
         player.sendSystemMessage(Component.literal(phrase.code).withStyle(ChatFormatting.GRAY))
         if (state.level >= BEEPS_FROM_LEVEL) MorseBeeper.start(player.server, player, phrase.code)
-        return true
     }
 }

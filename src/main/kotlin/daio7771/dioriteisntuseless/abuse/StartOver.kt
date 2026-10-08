@@ -29,6 +29,7 @@ object StartOver {
         val player = server.playerList.getPlayer(uuid)
         if (player != null) {
             NonsenseNameSignal.clear(player)
+            DioriteUselessness.sync(player)
             returnItems(player, state)
         } else {
             state.returnItemsOnJoin = state.takenItems.isNotEmpty()

@@ -37,7 +37,11 @@ import net.minecraft.world.level.block.state.BlockState
 object AbuseTracker {
 
     const val TICKS_PER_DAY = 24_000L
+    /** Último nivel al que se sube por puntuación (el del cartel). */
     const val MAX_LEVEL = DiuConfig.AbuseMode.LEVELS
+
+    /** El final (fases A y B, y después los créditos). Se llega desde el 4, no por puntuación. */
+    const val LEVEL_FINAL = MAX_LEVEL + 1
 
     /** Cada cuánto (en ticks jugados) se comprueba si sube de nivel. */
     private const val CHECK_INTERVAL = 20L
@@ -45,12 +49,21 @@ object AbuseTracker {
     fun init() {
         MorsePhrases.init()
         SignWords.init()
+        Ending.init()
         ServerLifecycleEvents.SERVER_STARTING.register { AbuseMode.resetSession() }
         // En un solo jugador el juego sigue abierto entre mundos: no se arrastra nada al siguiente.
         ServerLifecycleEvents.SERVER_STOPPED.register { MorseBeeper.clear() }
         ServerTickEvents.END_SERVER_TICK.register(::onServerTick)
-        ServerPlayConnectionEvents.JOIN.register { handler, _, _ ->
-            if (AbuseMode.healthy) AbuseMode.guard("player join") { StartOver.onJoin(handler.player) }
+        ServerPlayConnectionEvents.JOIN.register { handler, _, _ -> onJoin(handler.player) }
+    }
+
+    private fun onJoin(player: ServerPlayer) {
+        if (!AbuseMode.healthy) return
+        AbuseMode.guard("player join") {
+            StartOver.onJoin(player)
+            if (AbuseMode.active) Ending.onJoin(player, AbuseData.get(player.server))
+            // Su cliente no recuerda nada de la sesión anterior.
+            DioriteUselessness.sync(player)
         }
     }
 
@@ -103,6 +116,7 @@ object AbuseTracker {
                 }
                 AbuseSignals.tick(player, state)
                 FinalSign.tick(player, state)
+                Ending.tick(player, state)
             }
             data.setDirty()
         }
@@ -123,16 +137,28 @@ object AbuseTracker {
         return true
     }
 
-    /** Para el comando de pruebas: pone el nivel directamente y reinicia la cuenta de días. */
+    /**
+     * Para el comando de pruebas: pone el nivel directamente y reinicia la cuenta de días.
+     * [LEVEL_FINAL] hace ya la fase A (sin esperar a que entre o duerma). Salir del final así
+     * no devuelve lo retirado: para eso está "Start over".
+     */
     fun setLevel(server: MinecraftServer, player: ServerPlayer, level: Int) {
         val data = AbuseData.get(server)
         val state = data.get(player.uuid)
-        state.level = level.coerceIn(0, MAX_LEVEL)
-        state.levelReachedAt = state.playTicks
-        // Por debajo del 4, volver al 4 vuelve a sacar EL cartel (el anterior sigue registrado).
-        if (state.level < MAX_LEVEL) state.finalSignPlacedAt = -1
-        AbuseSignals.schedule(player, state)
+        val target = level.coerceIn(0, LEVEL_FINAL)
         NonsenseNameSignal.clear(player)
+        if (target == LEVEL_FINAL) {
+            if (state.level != LEVEL_FINAL) Ending.start(player, state)
+        } else {
+            state.level = target
+            state.levelReachedAt = state.playTicks
+            // Por debajo del 4, volver al 4 vuelve a sacar EL cartel (el anterior sigue registrado).
+            if (target < MAX_LEVEL) state.finalSignPlacedAt = -1
+            state.endingStartedAt = -1
+            state.dioriteUseless = false
+            DioriteUselessness.sync(player)
+            AbuseSignals.schedule(player, state)
+        }
         data.setDirty()
     }
 

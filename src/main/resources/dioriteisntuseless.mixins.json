@@ -10,7 +10,8 @@
     "EnchantCommandMixin",
     "EnchantmentHelperMixin",
     "ExplosionDamageCalculatorMixin",
-    "ServerPlayerMixin"
+    "ServerPlayerMixin",
+    "SlotMixin"
   ],
   "injectors": {
     "defaultRequire": 1

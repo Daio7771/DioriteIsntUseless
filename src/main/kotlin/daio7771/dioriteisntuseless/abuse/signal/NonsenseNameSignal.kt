@@ -32,6 +32,9 @@ object NonsenseNameSignal : AbuseSignal {
     override val id = "nonsense_names"
     override val minLevel = 2
 
+    /** En el final ya están todos los ítems cambiados ([everything]). */
+    override val maxLevel = 4
+
     fun keepsItsName(item: Item): Boolean =
         BuiltInRegistries.ITEM.getKey(item).namespace == Dioriteisntuseless.MOD_ID ||
             BuiltInRegistries.ITEM.wrapAsHolder(item).`is`(KEEPS_ITS_NAME)
@@ -54,6 +57,13 @@ object NonsenseNameSignal : AbuseSignal {
         }
         ServerPlayNetworking.send(player, packet)
         return true
+    }
+
+    /** Fase B del final: todos los ítems (salvo la diorita y los del mod) hasta "Start over". */
+    fun everything(player: ServerPlayer) {
+        if (ServerPlayNetworking.canSend(player, NonsenseNamesPacket.TYPE)) {
+            ServerPlayNetworking.send(player, NonsenseNamesPacket.everything())
+        }
     }
 
     /** Quita todos los nombres sin sentido de ese jugador. */

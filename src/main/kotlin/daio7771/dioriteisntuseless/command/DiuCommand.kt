@@ -78,7 +78,7 @@ object DiuCommand {
                                     )
                                 )
                                 .then(
-                                    Commands.argument("level", IntegerArgumentType.integer(0, AbuseTracker.MAX_LEVEL))
+                                    Commands.argument("level", IntegerArgumentType.integer(0, AbuseTracker.LEVEL_FINAL))
                                         .executes {
                                             setAbuse(
                                                 it.source,

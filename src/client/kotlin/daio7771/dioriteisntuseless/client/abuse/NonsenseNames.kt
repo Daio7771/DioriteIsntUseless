@@ -43,6 +43,14 @@ object NonsenseNames {
 
     private val active = HashMap<Item, Scramble>()
 
+    /**
+     * Fase B del final: todos los ítems salvo la diorita y los del mod, hasta "Start over". Los
+     * nombres se inventan la primera vez que se muestran y ya no cambian.
+     */
+    private var everything = false
+    private val everythingNames = HashMap<Item, Component>()
+    private val keepsItsName = HashMap<Item, Boolean>()
+
     /** Paquetes recibidos que esperan a un momento tranquilo para aplicarse, en orden. */
     private val pending = ArrayDeque<NonsenseNamesPacket>()
 
@@ -63,8 +71,13 @@ object NonsenseNames {
     @JvmStatic
     fun displayName(stack: ItemStack, original: Component): Component {
         // Solo el hilo de dibujo: el servidor integrado y cualquier otro hilo ven el nombre real.
-        if (!RenderSystem.isOnRenderThread() || active.isEmpty() || stack.hasCustomHoverName()) return original
-        return active[stack.item]?.name ?: original
+        if (!RenderSystem.isOnRenderThread() || (!everything && active.isEmpty()) || stack.hasCustomHoverName()) {
+            return original
+        }
+        val item = stack.item
+        active[item]?.let { return it.name }
+        if (!everything || keepsItsName.getOrPut(item) { NonsenseNameSignal.keepsItsName(item) }) return original
+        return everythingNames.getOrPut(item) { Component.literal(randomName()) }
     }
 
     private fun tick(client: Minecraft) {
@@ -89,9 +102,10 @@ object NonsenseNames {
 
     private fun apply(packet: NonsenseNamesPacket) {
         if (packet.clear) {
-            active.clear()
+            clearNames()
             return
         }
+        if (packet.everything) everything = true
         for (id in packet.items) {
             val item = BuiltInRegistries.ITEM.getOptional(id).orElse(null) ?: continue
             if (NonsenseNameSignal.keepsItsName(item)) continue
@@ -106,8 +120,15 @@ object NonsenseNames {
         return buildString(length) { repeat(length) { append(ALPHABET[random.nextInt(ALPHABET.length)]) } }
     }
 
-    private fun reset() {
+    private fun clearNames() {
         active.clear()
+        everything = false
+        everythingNames.clear()
+        keepsItsName.clear()
+    }
+
+    private fun reset() {
+        clearNames()
         pending.clear()
         broken = false
     }

@@ -60,7 +60,10 @@ class AbuseData private constructor() : SavedData() {
 
 /** Progreso de un jugador. Todo se pone a 0 con "Start over" ([resetProgress]). */
 class PlayerAbuse {
-    /** 0 = nada; 1 a 4 = niveles. Nunca baja (salvo "Start over" o el comando de pruebas). */
+    /**
+     * 0 = nada; 1 a 4 = niveles; 5 = final (AbuseTracker.LEVEL_FINAL). Nunca baja (salvo
+     * "Start over" o el comando de pruebas).
+     */
     var level = 0
     var dioriteMined = 0L
     var stoneMined = 0L
@@ -87,6 +90,9 @@ class PlayerAbuse {
 
     /** [playTicks] cuando apareció EL cartel del nivel 4, o -1 si aún no ha aparecido. */
     var finalSignPlacedAt = -1L
+
+    /** [playTicks] de la fase A del final (empieza la fase B), o -1. */
+    var endingStartedAt = -1L
 
     /** Fase A del final: el hacha no tala y fundir diorita no le da cristales a este jugador. */
     var dioriteUseless = false
@@ -120,6 +126,7 @@ class PlayerAbuse {
         lastMorsePhrase = ""
         lastSignWord = ""
         finalSignPlacedAt = -1
+        endingStartedAt = -1
         dioriteUseless = false
     }
 
@@ -136,6 +143,7 @@ class PlayerAbuse {
         tag.putString("LastMorsePhrase", lastMorsePhrase)
         tag.putString("LastSignWord", lastSignWord)
         tag.putLong("FinalSignPlacedAt", finalSignPlacedAt)
+        tag.putLong("EndingStartedAt", endingStartedAt)
         tag.putBoolean("DioriteUseless", dioriteUseless)
         tag.put("TakenItems", ListTag().apply { takenItems.forEach { add(it.save(CompoundTag())) } })
         tag.putBoolean("ReturnItemsOnJoin", returnItemsOnJoin)
@@ -143,7 +151,7 @@ class PlayerAbuse {
 
     companion object {
         fun load(tag: CompoundTag) = PlayerAbuse().apply {
-            level = tag.getInt("Level").coerceIn(0, AbuseTracker.MAX_LEVEL)
+            level = tag.getInt("Level").coerceIn(0, AbuseTracker.LEVEL_FINAL)
             dioriteMined = tag.getLong("DioriteMined").coerceAtLeast(0)
             stoneMined = tag.getLong("StoneMined").coerceAtLeast(0)
             logsFelled = tag.getLong("LogsFelled").coerceAtLeast(0)
@@ -156,6 +164,7 @@ class PlayerAbuse {
             lastMorsePhrase = tag.getString("LastMorsePhrase")
             lastSignWord = tag.getString("LastSignWord")
             finalSignPlacedAt = if (tag.contains("FinalSignPlacedAt")) tag.getLong("FinalSignPlacedAt").coerceIn(-1, playTicks) else -1
+            endingStartedAt = if (tag.contains("EndingStartedAt")) tag.getLong("EndingStartedAt").coerceIn(-1, playTicks) else -1
             dioriteUseless = tag.getBoolean("DioriteUseless")
             for (item in tag.getList("TakenItems", Tag.TAG_COMPOUND.toInt())) {
                 // Un ítem de un mod que ya no está se lee como vacío: se pierde (no hay nada que devolver).

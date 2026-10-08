@@ -12,6 +12,9 @@ interface AbuseSignal {
     /** Primer nivel en el que puede aparecer. */
     val minLevel: Int
 
+    /** Último nivel en el que puede aparecer (el final es AbuseTracker.LEVEL_FINAL). */
+    val maxLevel: Int get() = Int.MAX_VALUE
+
     /** false si ahora no puede ocurrir por algo barato de comprobar (por ejemplo, no hay frases). */
     fun canRun(player: ServerPlayer, state: PlayerAbuse): Boolean = true
 
