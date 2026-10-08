@@ -26,6 +26,7 @@ object DiuConfigScreen {
         var diorite = current.diorite
         var treeFelling = current.treeFelling
         var axe = current.axe
+        var abuseMode = current.abuseMode
 
         val builder = ConfigBuilder.create()
             .setParentScreen(parent)
@@ -128,9 +129,53 @@ object DiuConfigScreen {
             )
         }
 
-        builder.setSavingRunnable { save(DiuConfig(diorite, treeFelling, axe)) }
+        builder.getOrCreateCategory(text("category.abuseMode")).apply {
+            addEntry(
+                entries.startBooleanToggle(text("abuseMode.enabled"), current.abuseMode.enabled)
+                    .setDefaultValue(defaults.abuseMode.enabled)
+                    .setTooltip(text("abuseMode.enabled.tooltip"))
+                    .setSaveConsumer { abuseMode = abuseMode.copy(enabled = it) }
+                    .build()
+            )
+            // Umbrales y tiempos: discretos, en una subsección plegada.
+            val advanced = entries.startSubCategory(text("abuseMode.advanced")).setExpanded(false)
+            for (i in 0 until DiuConfig.AbuseMode.LEVELS) {
+                advanced += entries.startIntField(text("abuseMode.threshold", i + 1), current.abuseMode.levelThresholds[i])
+                    .setDefaultValue(defaults.abuseMode.levelThresholds[i])
+                    .setMin(DiuConfig.Limits.ABUSE_THRESHOLD.first)
+                    .setMax(DiuConfig.Limits.ABUSE_THRESHOLD.last)
+                    .setSaveConsumer { value ->
+                        abuseMode = abuseMode.copy(levelThresholds = abuseMode.levelThresholds.with(i, value))
+                    }
+                    .build()
+            }
+            for (i in 0 until DiuConfig.AbuseMode.LEVELS) {
+                advanced += entries.startIntField(text("abuseMode.minDays", i + 1), current.abuseMode.minDaysBetweenLevels[i])
+                    .setDefaultValue(defaults.abuseMode.minDaysBetweenLevels[i])
+                    .setMin(DiuConfig.Limits.ABUSE_DAYS.first)
+                    .setMax(DiuConfig.Limits.ABUSE_DAYS.last)
+                    .setSaveConsumer { value ->
+                        abuseMode = abuseMode.copy(minDaysBetweenLevels = abuseMode.minDaysBetweenLevels.with(i, value))
+                    }
+                    .build()
+            }
+            advanced += entries.startIntField(text("abuseMode.daysUntilEnding"), current.abuseMode.daysUntilEnding)
+                .setDefaultValue(defaults.abuseMode.daysUntilEnding)
+                .setMin(DiuConfig.Limits.ABUSE_DAYS.first)
+                .setMax(DiuConfig.Limits.ABUSE_DAYS.last)
+                .setSaveConsumer { abuseMode = abuseMode.copy(daysUntilEnding = it) }
+                .build()
+            addEntry(advanced.build())
+        }
+
+        builder.setSavingRunnable {
+            // Se parte de la configuración en vigor para no perder lo que no sale en la pantalla.
+            save(ModConfig.current.copy(diorite = diorite, treeFelling = treeFelling, axe = axe, abuseMode = abuseMode))
+        }
         return builder.build()
     }
+
+    private fun List<Int>.with(index: Int, value: Int): List<Int> = toMutableList().also { it[index] = value }
 
     /** Escribe el JSON, aplica los cambios en caliente y, si hay partida LAN, avisa a los demás. */
     private fun save(config: DiuConfig) {
@@ -139,5 +184,5 @@ object DiuConfigScreen {
         server.execute { ConfigSync.broadcast(server) }
     }
 
-    private fun text(key: String) = Component.translatable("$LANG.$key")
+    private fun text(key: String, vararg args: Any) = Component.translatable("$LANG.$key", *args)
 }

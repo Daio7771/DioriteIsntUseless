@@ -9,7 +9,8 @@
     "BlockStateBaseMixin",
     "EnchantCommandMixin",
     "EnchantmentHelperMixin",
-    "ExplosionDamageCalculatorMixin"
+    "ExplosionDamageCalculatorMixin",
+    "ServerPlayerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

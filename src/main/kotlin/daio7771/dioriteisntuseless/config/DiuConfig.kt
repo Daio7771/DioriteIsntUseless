@@ -9,6 +9,8 @@ data class DiuConfig(
     val diorite: Diorite = Diorite(),
     val treeFelling: TreeFelling = TreeFelling(),
     val axe: Axe = Axe(),
+    val abuseMode: AbuseMode = AbuseMode(),
+    val client: Client = Client(),
 ) {
     /** Se sincroniza con los clientes (ver ConfigSyncPacket). */
     data class Diorite(
@@ -42,6 +44,29 @@ data class DiuConfig(
         val restrictEnchantments: Boolean = true,
     )
 
+    /** Ver docs/claudeplans/HORROR_DESIGN.md. Solo lo usa el servidor. */
+    data class AbuseMode(
+        /** false: no se cuenta nada y no hay señales. No deshace lo ya hecho. */
+        val enabled: Boolean = true,
+        /** Puntuación de abuso necesaria para cada nivel (1 a 4). */
+        val levelThresholds: List<Int> = listOf(256, 640, 1280, 2048),
+        /** Días de juego (del jugador) que tienen que pasar desde el nivel anterior. */
+        val minDaysBetweenLevels: List<Int> = listOf(1, 2, 2, 3),
+        /** Días de juego desde el cartel del nivel 4 hasta el final. */
+        val daysUntilEnding: Int = 1,
+    ) {
+        companion object {
+            /** Tamaño de levelThresholds y minDaysBetweenLevels. */
+            const val LEVELS = 4
+        }
+    }
+
+    /** Solo cliente: no se sincroniza ni lo usa el servidor. */
+    data class Client(
+        /** La pantalla de aviso ya se ha mostrado (solo se muestra una vez). */
+        val warningShown: Boolean = false,
+    )
+
     /** Rangos admitidos. Los valores fuera de rango se ajustan al límite más cercano. */
     object Limits {
         val HARDNESS = 1.5f..50.0f
@@ -49,6 +74,8 @@ data class DiuConfig(
         val MAX_LOGS = 1..512
         val LOGS_PER_DURABILITY_POINT = 1..10
         val AXE_DURABILITY = 1..10000
+        val ABUSE_THRESHOLD = 1..1_000_000
+        val ABUSE_DAYS = 0..365
     }
 }
 

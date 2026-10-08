@@ -1,6 +1,7 @@
 package daio7771.dioriteisntuseless
 
 import daio7771.dioriteisntuseless.ability.TreeFeller
+import daio7771.dioriteisntuseless.abuse.AbuseTracker
 import daio7771.dioriteisntuseless.command.DiuCommand
 import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.network.ConfigSync
@@ -21,6 +22,7 @@ class Dioriteisntuseless : ModInitializer {
         TreeFeller.init()
         DiuCommand.init()
         ConfigSync.init()
+        AbuseTracker.init()
     }
 
     companion object {

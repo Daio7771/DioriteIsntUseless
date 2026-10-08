@@ -1,5 +1,6 @@
 package daio7771.dioriteisntuseless.config
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
@@ -37,6 +38,8 @@ internal object ConfigCodec {
         val diorite = reader.section("diorite")
         val treeFelling = reader.section("treeFelling")
         val axe = reader.section("axe")
+        val abuseMode = reader.section("abuseMode")
+        val client = reader.section("client")
         val config = DiuConfig(
             diorite = DiuConfig.Diorite(
                 enabled = reader.boolean(diorite, "enabled", defaults.diorite.enabled),
@@ -58,6 +61,21 @@ internal object ConfigCodec {
             axe = DiuConfig.Axe(
                 durability = reader.int(axe, "durability", defaults.axe.durability, DiuConfig.Limits.AXE_DURABILITY),
                 restrictEnchantments = reader.boolean(axe, "restrictEnchantments", defaults.axe.restrictEnchantments),
+            ),
+            abuseMode = DiuConfig.AbuseMode(
+                enabled = reader.boolean(abuseMode, "enabled", defaults.abuseMode.enabled),
+                levelThresholds = reader.intList(
+                    abuseMode, "levelThresholds", defaults.abuseMode.levelThresholds, DiuConfig.Limits.ABUSE_THRESHOLD,
+                ),
+                minDaysBetweenLevels = reader.intList(
+                    abuseMode, "minDaysBetweenLevels", defaults.abuseMode.minDaysBetweenLevels, DiuConfig.Limits.ABUSE_DAYS,
+                ),
+                daysUntilEnding = reader.int(
+                    abuseMode, "daysUntilEnding", defaults.abuseMode.daysUntilEnding, DiuConfig.Limits.ABUSE_DAYS,
+                ),
+            ),
+            client = DiuConfig.Client(
+                warningShown = reader.boolean(client, "warningShown", defaults.client.warningShown),
             ),
         )
         return Decoded(config, reader.corrections, reader.treeChanged)
@@ -82,8 +100,19 @@ internal object ConfigCodec {
             addProperty("durability", config.axe.durability)
             addProperty("restrictEnchantments", config.axe.restrictEnchantments)
         }
+        section(root, "abuseMode").apply {
+            addProperty("enabled", config.abuseMode.enabled)
+            add("levelThresholds", intArray(config.abuseMode.levelThresholds))
+            add("minDaysBetweenLevels", intArray(config.abuseMode.minDaysBetweenLevels))
+            addProperty("daysUntilEnding", config.abuseMode.daysUntilEnding)
+        }
+        section(root, "client").apply {
+            addProperty("warningShown", config.client.warningShown)
+        }
         return root
     }
+
+    private fun intArray(values: List<Int>): JsonArray = JsonArray().apply { values.forEach(::add) }
 
     /** La sección [name] de [root]; si falta o no es un objeto, la crea (en el mismo sitio). */
     private fun section(root: JsonObject, name: String): JsonObject =
@@ -158,6 +187,24 @@ internal object ConfigCodec {
                 .toFloat()
         }
 
+        /**
+         * Una lista de enteros del mismo tamaño que [default]. Si no lo es (o algún elemento no
+         * es un entero), se usa la lista por defecto entera; cada elemento se ajusta a [range].
+         */
+        fun intList(section: Section, key: String, default: List<Int>, range: IntRange): List<Int> {
+            val element = element(section, key, intArray(default)) ?: return default
+            val expected = "a list of ${default.size} whole numbers"
+            if (element !is JsonArray || element.size() != default.size) {
+                return wrongType(section.path(key), element, expected, default)
+            }
+            val numbers = element.map { it.asNumberOrNull()?.takeIf { n -> n.isIntegral() } }
+            if (numbers.any { it == null }) return wrongType(section.path(key), element, expected, default)
+            return numbers.mapIndexed { i, number ->
+                clamp("${section.path(key)}[$i]", element[i], number!!, range.first.toBigDecimal(), range.last.toBigDecimal())
+                    .intValueExact()
+            }
+        }
+
         fun <E : Enum<E>> enum(section: Section, key: String, default: E, values: List<E>): E {
             val element = element(section, key, JsonPrimitive(default.name)) ?: return default
             val expected = values.joinToString(" or ") { "\"${it.name}\"" }
@@ -174,7 +221,7 @@ internal object ConfigCodec {
          * El valor de [key], o null si hay que usar el valor por defecto sin avisar: porque la
          * sección no es válida (ya se avisó) o porque falta la clave (se añade con [default]).
          */
-        private fun element(section: Section, key: String, default: JsonPrimitive): JsonElement? {
+        private fun element(section: Section, key: String, default: JsonElement): JsonElement? {
             val json = section.json ?: return null
             val element = json.get(key)
             if (element == null) {

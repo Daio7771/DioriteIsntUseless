@@ -1,17 +1,28 @@
 package daio7771.dioriteisntuseless.command
 
+import com.mojang.brigadier.arguments.IntegerArgumentType
+import daio7771.dioriteisntuseless.abuse.AbuseMode
+import daio7771.dioriteisntuseless.abuse.AbuseTracker
 import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.network.ConfigSync
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
+import net.minecraft.commands.arguments.EntityArgument
 import net.minecraft.network.chat.Component
+import net.minecraft.server.level.ServerPlayer
+import java.util.Locale
 
-/** /diu reload: vuelve a leer la configuración sin reiniciar. Solo operadores (nivel 2). */
+/**
+ * /diu reload: vuelve a leer la configuración sin reiniciar.
+ * /diu abuse <jugador> [nivel]: para pruebas del Abuse Mode; consulta o cambia el nivel.
+ * Solo operadores (nivel 2).
+ */
 object DiuCommand {
 
     private const val PERMISSION_LEVEL = 2
     private const val LANG = "commands.dioriteisntuseless.reload"
+    private const val ABUSE_LANG = "commands.dioriteisntuseless.abuse"
 
     fun init() {
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
@@ -19,6 +30,22 @@ object DiuCommand {
                 Commands.literal("diu")
                     .requires { it.hasPermission(PERMISSION_LEVEL) }
                     .then(Commands.literal("reload").executes { reload(it.source) })
+                    .then(
+                        Commands.literal("abuse").then(
+                            Commands.argument("player", EntityArgument.player())
+                                .executes { showAbuse(it.source, EntityArgument.getPlayer(it, "player")) }
+                                .then(
+                                    Commands.argument("level", IntegerArgumentType.integer(0, AbuseTracker.MAX_LEVEL))
+                                        .executes {
+                                            setAbuse(
+                                                it.source,
+                                                EntityArgument.getPlayer(it, "player"),
+                                                IntegerArgumentType.getInteger(it, "level"),
+                                            )
+                                        }
+                                )
+                        )
+                    )
             )
         }
     }
@@ -48,5 +75,30 @@ object DiuCommand {
                 0
             }
         }
+    }
+
+    private fun showAbuse(source: CommandSourceStack, player: ServerPlayer): Int {
+        val state = AbuseTracker.state(source.server, player)
+        source.sendSuccess({
+            Component.translatable(
+                "$ABUSE_LANG.status", player.displayName, state.level, state.score,
+                state.dioriteMined, state.stoneMined, state.logsFelled, state.axesCrafted,
+                String.format(Locale.ROOT, "%.2f", state.daysAtLevel),
+            )
+        }, false)
+        warnIfInactive(source)
+        return state.level
+    }
+
+    private fun setAbuse(source: CommandSourceStack, player: ServerPlayer, level: Int): Int {
+        AbuseTracker.setLevel(source.server, player, level)
+        // Como /gamemode: también se avisa a los demás operadores (y queda en el log).
+        source.sendSuccess({ Component.translatable("$ABUSE_LANG.set", player.displayName, level) }, true)
+        warnIfInactive(source)
+        return level
+    }
+
+    private fun warnIfInactive(source: CommandSourceStack) {
+        if (!AbuseMode.active) source.sendSuccess({ Component.translatable("$ABUSE_LANG.inactive") }, false)
     }
 }
