@@ -61,7 +61,12 @@ object MorseBeeper {
         }
     }
 
-    /** Corta todos los pitidos (Abuse Mode desactivado, servidor parado, "Start over"...). */
+    /** Corta los pitidos de un jugador ("Start over"). */
+    fun stop(uuid: UUID) {
+        pending.remove(uuid)
+    }
+
+    /** Corta todos los pitidos (Abuse Mode desactivado, servidor parado...). */
     fun clear() {
         pending.clear()
     }

@@ -5,6 +5,7 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.nbt.Tag
 import net.minecraft.server.MinecraftServer
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.saveddata.SavedData
 import java.util.UUID
 
@@ -57,7 +58,7 @@ class AbuseData private constructor() : SavedData() {
     }
 }
 
-/** Progreso de un jugador. Todo se pone a 0 con "Start over". */
+/** Progreso de un jugador. Todo se pone a 0 con "Start over" ([resetProgress]). */
 class PlayerAbuse {
     /** 0 = nada; 1 a 4 = niveles. Nunca baja (salvo "Start over" o el comando de pruebas). */
     var level = 0
@@ -81,11 +82,38 @@ class PlayerAbuse {
     /** Última frase en Morse, por lo mismo. */
     var lastMorsePhrase = ""
 
+    /** Fase A del final: el hacha no tala y fundir diorita no le da cristales a este jugador. */
+    var dioriteUseless = false
+
+    /**
+     * Lo que le quitó la fase A del final, para devolvérselo en "Start over". No se borra con
+     * [resetProgress]: se vacía al devolverlo.
+     */
+    val takenItems = ArrayList<ItemStack>()
+
+    /** "Start over" se hizo sin el jugador conectado: [takenItems] se le devuelve al entrar. */
+    var returnItemsOnJoin = false
+
     /** abuso = diorita minada + troncos talados con el hacha / 4 + hachas fabricadas * 16 */
     val score: Long get() = dioriteMined + logsFelled / 4 + axesCrafted * 16
 
     /** Días de juego desde que llegó al nivel actual. */
     val daysAtLevel: Double get() = (playTicks - levelReachedAt).toDouble() / AbuseTracker.TICKS_PER_DAY
+
+    /** "Start over": nivel, contadores, tiempo y señales a 0, y la diorita vuelve a ser útil. */
+    fun resetProgress() {
+        level = 0
+        dioriteMined = 0
+        stoneMined = 0
+        logsFelled = 0
+        axesCrafted = 0
+        playTicks = 0
+        levelReachedAt = 0
+        nextSignalAt = -1
+        lastSignal = ""
+        lastMorsePhrase = ""
+        dioriteUseless = false
+    }
 
     fun save(tag: CompoundTag) {
         tag.putInt("Level", level)
@@ -98,6 +126,9 @@ class PlayerAbuse {
         tag.putLong("NextSignalAt", nextSignalAt)
         tag.putString("LastSignal", lastSignal)
         tag.putString("LastMorsePhrase", lastMorsePhrase)
+        tag.putBoolean("DioriteUseless", dioriteUseless)
+        tag.put("TakenItems", ListTag().apply { takenItems.forEach { add(it.save(CompoundTag())) } })
+        tag.putBoolean("ReturnItemsOnJoin", returnItemsOnJoin)
     }
 
     companion object {
@@ -113,6 +144,12 @@ class PlayerAbuse {
             nextSignalAt = if (tag.contains("NextSignalAt")) tag.getLong("NextSignalAt").coerceAtLeast(-1) else -1
             lastSignal = tag.getString("LastSignal")
             lastMorsePhrase = tag.getString("LastMorsePhrase")
+            dioriteUseless = tag.getBoolean("DioriteUseless")
+            for (item in tag.getList("TakenItems", Tag.TAG_COMPOUND.toInt())) {
+                // Un ítem de un mod que ya no está se lee como vacío: se pierde (no hay nada que devolver).
+                ItemStack.of(item as CompoundTag).takeUnless { it.isEmpty }?.let(takenItems::add)
+            }
+            returnItemsOnJoin = tag.getBoolean("ReturnItemsOnJoin")
         }
     }
 }

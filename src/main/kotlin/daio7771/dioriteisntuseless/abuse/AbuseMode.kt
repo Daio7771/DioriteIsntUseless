@@ -18,6 +18,12 @@ object AbuseMode {
     /** true si hay que contar y reaccionar: activado en la configuración y sin errores en esta sesión. */
     val active: Boolean get() = !failed && ModConfig.current.abuseMode.enabled
 
+    /**
+     * Sin errores en esta sesión, esté activado o no. Deshacer ("Start over" y las restauraciones
+     * pendientes) solo necesita esto: desactivar el Abuse Mode no impide deshacer lo hecho.
+     */
+    val healthy: Boolean get() = !failed
+
     /** Al arrancar cada servidor (también el integrado al abrir un mundo). */
     fun resetSession() {
         failed = false

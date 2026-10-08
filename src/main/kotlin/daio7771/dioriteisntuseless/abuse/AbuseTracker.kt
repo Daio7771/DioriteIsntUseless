@@ -10,13 +10,17 @@ import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.registry.ModItems
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
+import net.minecraft.core.BlockPos
 import net.minecraft.server.MinecraftServer
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.stats.Stat
 import net.minecraft.stats.Stats
 import net.minecraft.tags.BlockTags
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.block.state.BlockState
 
 /**
  * Cuenta el abuso de cada jugador y sube su nivel (HORROR_DESIGN.md, apartado 3).
@@ -43,6 +47,9 @@ object AbuseTracker {
         // En un solo jugador el juego sigue abierto entre mundos: no se arrastra nada al siguiente.
         ServerLifecycleEvents.SERVER_STOPPED.register { MorseBeeper.clear() }
         ServerTickEvents.END_SERVER_TICK.register(::onServerTick)
+        ServerPlayConnectionEvents.JOIN.register { handler, _, _ ->
+            if (AbuseMode.healthy) AbuseMode.guard("player join") { StartOver.onJoin(handler.player) }
+        }
     }
 
     /** Lo llama ServerPlayerMixin cada vez que el jugador recibe una estadística. */
@@ -71,6 +78,7 @@ object AbuseTracker {
     }
 
     private fun onServerTick(server: MinecraftServer) {
+        if (AbuseMode.healthy) AbuseMode.guard("world restoration") { WorldChanges.tick(server) }
         if (!AbuseMode.active) {
             // Desactivado en caliente: las señales se detienen al momento, también los pitidos.
             MorseBeeper.clear()
@@ -122,6 +130,23 @@ object AbuseTracker {
         NonsenseNameSignal.clear(player)
         data.setDirty()
     }
+
+    /** "Start over" de [player]. Devuelve false si no se ha podido (error interno; ver el log). */
+    fun startOver(server: MinecraftServer, player: ServerPlayer): Boolean {
+        if (!AbuseMode.healthy) return false
+        AbuseMode.guard("start over") { StartOver.run(server, player.uuid) }
+        return AbuseMode.healthy
+    }
+
+    /** Para el comando de pruebas: un cambio en el mundo registrado, como los de las señales. */
+    fun testWorldChange(player: ServerPlayer, level: ServerLevel, pos: BlockPos, state: BlockState): Boolean {
+        if (!AbuseMode.healthy) return false
+        var changed = false
+        AbuseMode.guard("test world change") { changed = WorldChanges.change(level, pos, state, player.uuid) }
+        return changed
+    }
+
+    fun worldChangeCount(server: MinecraftServer, player: ServerPlayer): Int = WorldChanges.get(server).count(player.uuid)
 
     /** Para el comando de pruebas: lanza una señal ya. Devuelve false si no hay ninguna posible. */
     fun forceSignal(server: MinecraftServer, player: ServerPlayer): Boolean {
