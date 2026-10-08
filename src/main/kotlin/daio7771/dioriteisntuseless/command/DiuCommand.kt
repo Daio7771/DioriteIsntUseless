@@ -2,12 +2,15 @@ package daio7771.dioriteisntuseless.command
 
 import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import daio7771.dioriteisntuseless.abuse.AbuseMode
 import daio7771.dioriteisntuseless.abuse.AbuseTracker
 import daio7771.dioriteisntuseless.abuse.signal.AbuseSignals
 import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.network.ConfigSync
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
+import net.fabricmc.loader.api.FabricLoader
+import net.minecraft.commands.CommandBuildContext
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.SharedSuggestionProvider
@@ -22,10 +25,10 @@ import java.util.Locale
 
 /**
  * /diu reload: vuelve a leer la configuración sin reiniciar.
- * /diu abuse <jugador> [nivel | signal [tipo] | credits | reset | change <pos> <bloque>]: para
- * pruebas del Abuse Mode; consulta o cambia el nivel, lanza una señal ya (una concreta o al azar),
- * lleva a los créditos, hace "Start over" o hace un cambio en el mundo registrado (para probar
- * que "Start over" lo deshace).
+ * /diu abuse <jugador> [nivel | signal [tipo] | credits | reset | change <pos> <bloque>]: SOLO EN
+ * DESARROLLO, para pruebas del Abuse Mode; consulta o cambia el nivel, lanza una señal ya (una
+ * concreta o al azar), lleva a los créditos, hace "Start over" o hace un cambio en el mundo
+ * registrado (para probar que "Start over" lo deshace).
  * Solo operadores (nivel 2).
  */
 object DiuCommand {
@@ -35,68 +38,71 @@ object DiuCommand {
     private const val ABUSE_LANG = "commands.dioriteisntuseless.abuse"
 
     fun init() {
+        // /diu abuse solo existe en desarrollo (runClient/runServer): en el mod publicado no se
+        // registra, así que ni aparece en el autocompletado.
+        val withTestCommands = FabricLoader.getInstance().isDevelopmentEnvironment
         CommandRegistrationCallback.EVENT.register { dispatcher, buildContext, _ ->
-            dispatcher.register(
-                Commands.literal("diu")
-                    .requires { it.hasPermission(PERMISSION_LEVEL) }
-                    .then(Commands.literal("reload").executes { reload(it.source) })
-                    .then(
-                        Commands.literal("abuse").then(
-                            Commands.argument("player", EntityArgument.player())
-                                .executes { showAbuse(it.source, EntityArgument.getPlayer(it, "player")) }
-                                .then(
-                                    Commands.literal("signal")
-                                        .executes { forceSignal(it.source, EntityArgument.getPlayer(it, "player"), null) }
-                                        .then(
-                                            Commands.argument("type", StringArgumentType.word())
-                                                .suggests { _, builder -> SharedSuggestionProvider.suggest(AbuseSignals.ids, builder) }
-                                                .executes {
-                                                    forceSignal(
-                                                        it.source,
-                                                        EntityArgument.getPlayer(it, "player"),
-                                                        StringArgumentType.getString(it, "type"),
-                                                    )
-                                                }
-                                        )
-                                )
-                                .then(
-                                    Commands.literal("credits")
-                                        .executes { skipToCredits(it.source, EntityArgument.getPlayer(it, "player")) }
-                                )
-                                .then(
-                                    Commands.literal("reset")
-                                        .executes { startOver(it.source, EntityArgument.getPlayer(it, "player")) }
-                                )
-                                .then(
-                                    Commands.literal("change").then(
-                                        Commands.argument("pos", BlockPosArgument.blockPos()).then(
-                                            Commands.argument("block", BlockStateArgument.block(buildContext))
-                                                .executes {
-                                                    testWorldChange(
-                                                        it.source,
-                                                        EntityArgument.getPlayer(it, "player"),
-                                                        BlockPosArgument.getLoadedBlockPos(it, "pos"),
-                                                        BlockStateArgument.getBlock(it, "block").state,
-                                                    )
-                                                }
-                                        )
-                                    )
-                                )
-                                .then(
-                                    Commands.argument("level", IntegerArgumentType.integer(0, AbuseTracker.LEVEL_FINAL))
-                                        .executes {
-                                            setAbuse(
-                                                it.source,
-                                                EntityArgument.getPlayer(it, "player"),
-                                                IntegerArgumentType.getInteger(it, "level"),
-                                            )
-                                        }
-                                )
-                        )
-                    )
-            )
+            val root = Commands.literal("diu")
+                .requires { it.hasPermission(PERMISSION_LEVEL) }
+                .then(Commands.literal("reload").executes { reload(it.source) })
+            if (withTestCommands) root.then(abuseCommand(buildContext))
+            dispatcher.register(root)
         }
     }
+
+    private fun abuseCommand(buildContext: CommandBuildContext): LiteralArgumentBuilder<CommandSourceStack> =
+        Commands.literal("abuse").then(
+            Commands.argument("player", EntityArgument.player())
+                .executes { showAbuse(it.source, EntityArgument.getPlayer(it, "player")) }
+                .then(
+                    Commands.literal("signal")
+                        .executes { forceSignal(it.source, EntityArgument.getPlayer(it, "player"), null) }
+                        .then(
+                            Commands.argument("type", StringArgumentType.word())
+                                .suggests { _, builder -> SharedSuggestionProvider.suggest(AbuseSignals.ids, builder) }
+                                .executes {
+                                    forceSignal(
+                                        it.source,
+                                        EntityArgument.getPlayer(it, "player"),
+                                        StringArgumentType.getString(it, "type"),
+                                    )
+                                }
+                        )
+                )
+                .then(
+                    Commands.literal("credits")
+                        .executes { skipToCredits(it.source, EntityArgument.getPlayer(it, "player")) }
+                )
+                .then(
+                    Commands.literal("reset")
+                        .executes { startOver(it.source, EntityArgument.getPlayer(it, "player")) }
+                )
+                .then(
+                    Commands.literal("change").then(
+                        Commands.argument("pos", BlockPosArgument.blockPos()).then(
+                            Commands.argument("block", BlockStateArgument.block(buildContext))
+                                .executes {
+                                    testWorldChange(
+                                        it.source,
+                                        EntityArgument.getPlayer(it, "player"),
+                                        BlockPosArgument.getLoadedBlockPos(it, "pos"),
+                                        BlockStateArgument.getBlock(it, "block").state,
+                                    )
+                                }
+                        )
+                    )
+                )
+                .then(
+                    Commands.argument("level", IntegerArgumentType.integer(0, AbuseTracker.LEVEL_FINAL))
+                        .executes {
+                            setAbuse(
+                                it.source,
+                                EntityArgument.getPlayer(it, "player"),
+                                IntegerArgumentType.getInteger(it, "level"),
+                            )
+                        }
+                )
+        )
 
     private fun reload(source: CommandSourceStack): Int {
         return when (val result = ModConfig.reload()) {
