@@ -15,7 +15,8 @@ import java.util.Locale
 
 /**
  * /diu reload: vuelve a leer la configuración sin reiniciar.
- * /diu abuse <jugador> [nivel]: para pruebas del Abuse Mode; consulta o cambia el nivel.
+ * /diu abuse <jugador> [nivel | signal]: para pruebas del Abuse Mode; consulta o cambia el nivel,
+ * o lanza una señal ya.
  * Solo operadores (nivel 2).
  */
 object DiuCommand {
@@ -34,6 +35,10 @@ object DiuCommand {
                         Commands.literal("abuse").then(
                             Commands.argument("player", EntityArgument.player())
                                 .executes { showAbuse(it.source, EntityArgument.getPlayer(it, "player")) }
+                                .then(
+                                    Commands.literal("signal")
+                                        .executes { forceSignal(it.source, EntityArgument.getPlayer(it, "player")) }
+                                )
                                 .then(
                                     Commands.argument("level", IntegerArgumentType.integer(0, AbuseTracker.MAX_LEVEL))
                                         .executes {
@@ -96,6 +101,15 @@ object DiuCommand {
         source.sendSuccess({ Component.translatable("$ABUSE_LANG.set", player.displayName, level) }, true)
         warnIfInactive(source)
         return level
+    }
+
+    private fun forceSignal(source: CommandSourceStack, player: ServerPlayer): Int {
+        if (!AbuseTracker.forceSignal(source.server, player)) {
+            source.sendFailure(Component.translatable("$ABUSE_LANG.no_signal", player.displayName))
+            return 0
+        }
+        source.sendSuccess({ Component.translatable("$ABUSE_LANG.signal", player.displayName) }, false)
+        return 1
     }
 
     private fun warnIfInactive(source: CommandSourceStack) {

@@ -1,6 +1,9 @@
 package daio7771.dioriteisntuseless.abuse
 
 import daio7771.dioriteisntuseless.Dioriteisntuseless.Companion.LOGGER
+import daio7771.dioriteisntuseless.abuse.morse.MorseBeeper
+import daio7771.dioriteisntuseless.abuse.morse.MorsePhrases
+import daio7771.dioriteisntuseless.abuse.signal.AbuseSignals
 import daio7771.dioriteisntuseless.config.DiuConfig
 import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.registry.ModItems
@@ -34,7 +37,10 @@ object AbuseTracker {
     private const val CHECK_INTERVAL = 20L
 
     fun init() {
+        MorsePhrases.init()
         ServerLifecycleEvents.SERVER_STARTING.register { AbuseMode.resetSession() }
+        // En un solo jugador el juego sigue abierto entre mundos: no se arrastra nada al siguiente.
+        ServerLifecycleEvents.SERVER_STOPPED.register { MorseBeeper.clear() }
         ServerTickEvents.END_SERVER_TICK.register(::onServerTick)
     }
 
@@ -64,8 +70,13 @@ object AbuseTracker {
     }
 
     private fun onServerTick(server: MinecraftServer) {
-        if (!AbuseMode.active) return
+        if (!AbuseMode.active) {
+            // Desactivado en caliente: las señales se detienen al momento, también los pitidos.
+            MorseBeeper.clear()
+            return
+        }
         AbuseMode.guard("server tick") {
+            MorseBeeper.tick(server)
             val players = server.playerList.players
             if (players.isEmpty()) return
             val data = AbuseData.get(server)
@@ -73,10 +84,13 @@ object AbuseTracker {
             for (player in players) {
                 val state = data.get(player.uuid)
                 state.playTicks++
-                if (state.playTicks % CHECK_INTERVAL == 0L && tryLevelUp(state, config)) {
+                if (state.playTicks % CHECK_INTERVAL != 0L) continue
+                if (tryLevelUp(state, config)) {
                     // En debug para no destripar nada a quien lea el log.
                     LOGGER.debug("Abuse mode: {} reached level {}.", player.gameProfile.name, state.level)
+                    AbuseSignals.schedule(player, state)
                 }
+                AbuseSignals.tick(player, state)
             }
             data.setDirty()
         }
@@ -103,7 +117,20 @@ object AbuseTracker {
         val state = data.get(player.uuid)
         state.level = level.coerceIn(0, MAX_LEVEL)
         state.levelReachedAt = state.playTicks
+        AbuseSignals.schedule(player, state)
         data.setDirty()
+    }
+
+    /** Para el comando de pruebas: lanza una señal ya. Devuelve false si no hay ninguna posible. */
+    fun forceSignal(server: MinecraftServer, player: ServerPlayer): Boolean {
+        if (!AbuseMode.active) return false
+        var ran = false
+        AbuseMode.guard("forced signal") {
+            val data = AbuseData.get(server)
+            ran = AbuseSignals.forceNow(player, data.get(player.uuid))
+            data.setDirty()
+        }
+        return ran
     }
 
     fun state(server: MinecraftServer, player: ServerPlayer): PlayerAbuse = AbuseData.get(server).get(player.uuid)

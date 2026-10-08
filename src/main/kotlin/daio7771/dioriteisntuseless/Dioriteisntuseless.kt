@@ -7,6 +7,7 @@ import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.network.ConfigSync
 import daio7771.dioriteisntuseless.registry.ModItems
 import daio7771.dioriteisntuseless.registry.ModRecipes
+import daio7771.dioriteisntuseless.registry.ModSounds
 import net.fabricmc.api.ModInitializer
 import net.minecraft.resources.ResourceLocation
 import org.slf4j.Logger
@@ -18,6 +19,7 @@ class Dioriteisntuseless : ModInitializer {
         // Lo primero: la durabilidad del hacha sale de la configuración al registrar el ítem.
         ModConfig.loadAtStartup()
         ModItems.init()
+        ModSounds.init()
         ModRecipes.init()
         TreeFeller.init()
         DiuCommand.init()

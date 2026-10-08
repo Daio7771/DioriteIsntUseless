@@ -1,0 +1,10 @@
+{
+  "morse.dot": {
+    "subtitle": "subtitles.dioriteisntuseless.morse",
+    "sounds": ["dioriteisntuseless:morse/dot"]
+  },
+  "morse.dash": {
+    "subtitle": "subtitles.dioriteisntuseless.morse",
+    "sounds": ["dioriteisntuseless:morse/dash"]
+  }
+}

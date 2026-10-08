@@ -72,6 +72,15 @@ class PlayerAbuse {
     /** [playTicks] cuando llegó al nivel actual. */
     var levelReachedAt = 0L
 
+    /** [playTicks] en que toca la próxima señal, o -1 si no hay ninguna programada. */
+    var nextSignalAt = -1L
+
+    /** Id de la última señal, para no repetir la misma dos veces seguidas. */
+    var lastSignal = ""
+
+    /** Última frase en Morse, por lo mismo. */
+    var lastMorsePhrase = ""
+
     /** abuso = diorita minada + troncos talados con el hacha / 4 + hachas fabricadas * 16 */
     val score: Long get() = dioriteMined + logsFelled / 4 + axesCrafted * 16
 
@@ -86,6 +95,9 @@ class PlayerAbuse {
         tag.putLong("AxesCrafted", axesCrafted)
         tag.putLong("PlayTicks", playTicks)
         tag.putLong("LevelReachedAt", levelReachedAt)
+        tag.putLong("NextSignalAt", nextSignalAt)
+        tag.putString("LastSignal", lastSignal)
+        tag.putString("LastMorsePhrase", lastMorsePhrase)
     }
 
     companion object {
@@ -97,6 +109,10 @@ class PlayerAbuse {
             axesCrafted = tag.getLong("AxesCrafted").coerceAtLeast(0)
             playTicks = tag.getLong("PlayTicks").coerceAtLeast(0)
             levelReachedAt = tag.getLong("LevelReachedAt").coerceIn(0, playTicks)
+            // Si falta (datos de antes de las señales), -1: se programa en el siguiente tick.
+            nextSignalAt = if (tag.contains("NextSignalAt")) tag.getLong("NextSignalAt").coerceAtLeast(-1) else -1
+            lastSignal = tag.getString("LastSignal")
+            lastMorsePhrase = tag.getString("LastMorsePhrase")
         }
     }
 }
