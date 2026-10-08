@@ -22,9 +22,10 @@ import java.util.Locale
 
 /**
  * /diu reload: vuelve a leer la configuración sin reiniciar.
- * /diu abuse <jugador> [nivel | signal [tipo] | reset | change <pos> <bloque>]: para pruebas del
- * Abuse Mode; consulta o cambia el nivel, lanza una señal ya (una concreta o al azar), hace
- * "Start over" o hace un cambio en el mundo registrado (para probar que "Start over" lo deshace).
+ * /diu abuse <jugador> [nivel | signal [tipo] | credits | reset | change <pos> <bloque>]: para
+ * pruebas del Abuse Mode; consulta o cambia el nivel, lanza una señal ya (una concreta o al azar),
+ * lleva a los créditos, hace "Start over" o hace un cambio en el mundo registrado (para probar
+ * que "Start over" lo deshace).
  * Solo operadores (nivel 2).
  */
 object DiuCommand {
@@ -57,6 +58,10 @@ object DiuCommand {
                                                     )
                                                 }
                                         )
+                                )
+                                .then(
+                                    Commands.literal("credits")
+                                        .executes { skipToCredits(it.source, EntityArgument.getPlayer(it, "player")) }
                                 )
                                 .then(
                                     Commands.literal("reset")
@@ -148,6 +153,15 @@ object DiuCommand {
             return 0
         }
         source.sendSuccess({ Component.translatable("$ABUSE_LANG.signal", player.displayName) }, false)
+        return 1
+    }
+
+    private fun skipToCredits(source: CommandSourceStack, player: ServerPlayer): Int {
+        if (!AbuseTracker.skipToCredits(source.server, player)) {
+            source.sendFailure(Component.translatable("$ABUSE_LANG.inactive"))
+            return 0
+        }
+        source.sendSuccess({ Component.translatable("$ABUSE_LANG.credits", player.displayName) }, false)
         return 1
     }
 

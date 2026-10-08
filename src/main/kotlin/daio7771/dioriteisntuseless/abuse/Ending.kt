@@ -22,7 +22,8 @@ import net.minecraft.world.item.ItemStack
  *   "Start over". Desde entonces el hacha no tala en sus manos y no puede sacar cristales del horno
  *   (DioriteUselessness). Morse final: DELETE THIS MOD.
  * - Fase B: un día de juego con las señales del nivel final (todo a más frecuencia y todos los
- *   ítems con nombres sin sentido). Después, los créditos (paso 8).
+ *   ítems con nombres sin sentido). Después, los créditos: su cliente los abre en el próximo
+ *   momento tranquilo, y su botón "Start over" lo vuelve todo a empezar.
  *
  * Para que no se le vea desaparecer nada de la barra rápida, la fase A espera a un momento en que
  * no mira: al entrar al mundo o al despertarse tras dormir. Si en medio día de juego no ha pasado
@@ -49,10 +50,31 @@ object Ending {
         }
     }
 
-    /** Desde el tick del jugador (cada pocos ticks): la red de seguridad del medio día. */
+    /**
+     * Desde el tick del jugador (cada pocos ticks): la red de seguridad del medio día y, al acabar
+     * la fase B, el aviso a su cliente de que tocan los créditos.
+     */
     fun tick(player: ServerPlayer, state: PlayerAbuse) {
         val due = dueAt(state)
         if (due >= 0 && state.playTicks >= due + FALLBACK_TICKS) start(player, state)
+        if (!state.creditsAnnounced && creditsDue(state)) {
+            state.creditsAnnounced = true
+            AbuseStateSync.sync(player)
+        }
+    }
+
+    /** La fase B ha terminado: los créditos se abren en el próximo momento tranquilo. */
+    fun creditsDue(state: PlayerAbuse): Boolean =
+        state.level == AbuseTracker.LEVEL_FINAL && state.endingStartedAt >= 0 &&
+            state.playTicks - state.endingStartedAt >= PHASE_B_TICKS
+
+    /** Para el comando de pruebas: da la fase B por terminada (y hace antes la A si hace falta). */
+    fun skipToCredits(player: ServerPlayer, state: PlayerAbuse) {
+        if (state.level != AbuseTracker.LEVEL_FINAL) start(player, state)
+        state.endingStartedAt = (state.playTicks - PHASE_B_TICKS).coerceAtLeast(0)
+        state.playTicks = state.endingStartedAt + PHASE_B_TICKS
+        state.creditsAnnounced = true
+        AbuseStateSync.sync(player)
     }
 
     /** Al entrar al mundo: si ya toca, empieza; si ya está en la fase final, le recuerda los nombres. */
@@ -92,7 +114,7 @@ object Ending {
         state.dioriteUseless = true
         val taken = takeItems(player, state)
         LOGGER.debug("Abuse mode: ending started for {}; {} stack(s) held back.", player.gameProfile.name, taken)
-        DioriteUselessness.sync(player)
+        AbuseStateSync.sync(player)
         NonsenseNameSignal.everything(player)
         MorseSignal.send(player, state, MorsePhrases.Phrase(FINAL_MORSE, MorseCode.encode(FINAL_MORSE).code))
         AbuseSignals.schedule(player, state)

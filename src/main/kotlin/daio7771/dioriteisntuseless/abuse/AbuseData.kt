@@ -94,6 +94,9 @@ class PlayerAbuse {
     /** [playTicks] de la fase A del final (empieza la fase B), o -1. */
     var endingStartedAt = -1L
 
+    /** Ya se le ha dicho a su cliente que tocan los créditos. No se guarda: al entrar se le repite. */
+    var creditsAnnounced = false
+
     /** Fase A del final: el hacha no tala y fundir diorita no le da cristales a este jugador. */
     var dioriteUseless = false
 
@@ -127,6 +130,7 @@ class PlayerAbuse {
         lastSignWord = ""
         finalSignPlacedAt = -1
         endingStartedAt = -1
+        creditsAnnounced = false
         dioriteUseless = false
     }
 

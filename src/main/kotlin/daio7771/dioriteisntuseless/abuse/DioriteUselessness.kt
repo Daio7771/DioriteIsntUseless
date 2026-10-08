@@ -1,8 +1,6 @@
 package daio7771.dioriteisntuseless.abuse
 
-import daio7771.dioriteisntuseless.network.AbuseStatePacket
 import daio7771.dioriteisntuseless.registry.ModItems
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
@@ -13,7 +11,7 @@ import net.minecraft.world.item.ItemStack
  * jugadores y las tolvas sí pueden). Dura hasta "Start over", aunque se desactive el Abuse Mode
  * (desactivarlo no deshace lo hecho).
  *
- * El cliente también lo sabe (AbuseStatePacket) para que el clic en el horno no haga nada en su
+ * El cliente también lo sabe (AbuseStateSync) para que el clic en el horno no haga nada en su
  * pantalla, en vez de coger el cristal y que luego vuelva a su sitio.
  */
 object DioriteUselessness {
@@ -38,10 +36,4 @@ object DioriteUselessness {
     @JvmStatic
     fun blocksFurnaceTake(player: Player, stack: ItemStack): Boolean =
         stack.`is`(ModItems.DIORITE_CRYSTAL) && isUseless(player)
-
-    /** Manda el estado al cliente del jugador (al cambiar, al entrar y tras "Start over"). */
-    fun sync(player: ServerPlayer) {
-        if (!ServerPlayNetworking.canSend(player, AbuseStatePacket.TYPE)) return
-        ServerPlayNetworking.send(player, AbuseStatePacket(isUseless(player)))
-    }
 }

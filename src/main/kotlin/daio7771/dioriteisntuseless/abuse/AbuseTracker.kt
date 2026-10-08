@@ -50,6 +50,7 @@ object AbuseTracker {
         MorsePhrases.init()
         SignWords.init()
         Ending.init()
+        AbuseStateSync.init()
         ServerLifecycleEvents.SERVER_STARTING.register { AbuseMode.resetSession() }
         // En un solo jugador el juego sigue abierto entre mundos: no se arrastra nada al siguiente.
         ServerLifecycleEvents.SERVER_STOPPED.register { MorseBeeper.clear() }
@@ -63,7 +64,7 @@ object AbuseTracker {
             StartOver.onJoin(player)
             if (AbuseMode.active) Ending.onJoin(player, AbuseData.get(player.server))
             // Su cliente no recuerda nada de la sesión anterior.
-            DioriteUselessness.sync(player)
+            AbuseStateSync.sync(player)
         }
     }
 
@@ -156,10 +157,21 @@ object AbuseTracker {
             if (target < MAX_LEVEL) state.finalSignPlacedAt = -1
             state.endingStartedAt = -1
             state.dioriteUseless = false
-            DioriteUselessness.sync(player)
+            AbuseStateSync.sync(player)
             AbuseSignals.schedule(player, state)
         }
         data.setDirty()
+    }
+
+    /** Para el comando de pruebas: lleva al jugador a los créditos (hace la fase A si hace falta). */
+    fun skipToCredits(server: MinecraftServer, player: ServerPlayer): Boolean {
+        if (!AbuseMode.active) return false
+        AbuseMode.guard("skip to credits") {
+            val data = AbuseData.get(server)
+            Ending.skipToCredits(player, data.get(player.uuid))
+            data.setDirty()
+        }
+        return AbuseMode.active
     }
 
     /** "Start over" de [player]. Devuelve false si no se ha podido (error interno; ver el log). */
