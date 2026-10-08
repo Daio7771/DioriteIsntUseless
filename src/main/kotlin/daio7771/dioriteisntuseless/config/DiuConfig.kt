@@ -35,6 +35,11 @@ data class DiuConfig(
         /** true: todos los drops salen juntos en el tronco golpeado; false: cada uno en su sitio. */
         val dropsAtOrigin: Boolean = true,
         val sneakMode: SneakMode = SneakMode.SNEAK_DISABLES,
+        /**
+         * Árboles enteros que tala un hacha antes de romperse; 0 = sin límite. Reparar en el
+         * yunque con lingotes reinicia la cuenta. Se sincroniza con los clientes (para la barra).
+         */
+        val treesBeforeBreaking: Int = 7,
     )
 
     data class Axe(
@@ -73,6 +78,7 @@ data class DiuConfig(
         val BLAST_RESISTANCE = 6.0f..1200.0f
         val MAX_LOGS = 1..512
         val LOGS_PER_DURABILITY_POINT = 1..10
+        val TREES_BEFORE_BREAKING = 0..1000
         val AXE_DURABILITY = 1..10000
         val ABUSE_THRESHOLD = 1..1_000_000
         val ABUSE_DAYS = 0..365

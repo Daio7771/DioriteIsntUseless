@@ -30,7 +30,8 @@ import kotlin.math.min
  * quitar el bloque golpeado y antes de gastar la herramienta y soltar sus drops. Todo ocurre
  * en el servidor lógico.
  *
- * También cobra el desgaste de todos los troncos que rompe el hacha, con o sin talada.
+ * También cobra el desgaste de todos los troncos que rompe el hacha, con o sin talada, y cuenta
+ * los árboles enteros (el hacha se rompe a los treeFelling.treesBeforeBreaking).
  * La configuración se lee una vez por tronco golpeado, así una talada usa los mismos valores
  * de principio a fin aunque se recargue a la vez.
  */
@@ -67,18 +68,24 @@ object TreeFeller {
         if (!config.sneakMode.fellsTree(player.isShiftKeyDown) || axe.isEmpty) return
 
         felling += player.uuid
-        try {
+        val felled = try {
             fell(level, player, axe, pos, config)
         } finally {
             felling -= player.uuid
         }
+        // Un árbol entero = una talada que rompe algo más que el tronco golpeado. Un tronco suelto
+        // no cuenta. Se cobra al final, con los drops ya en el suelo.
+        if (felled > 0) DioritineAxeItem.addFelledTree(axe, player, config.treesBeforeBreaking)
     }
 
-    private fun fell(level: ServerLevel, player: ServerPlayer, axe: ItemStack, origin: BlockPos, config: DiuConfig.TreeFelling) {
+    /** Devuelve cuántos troncos ha roto, sin contar el golpeado. */
+    private fun fell(level: ServerLevel, player: ServerPlayer, axe: ItemStack, origin: BlockPos, config: DiuConfig.TreeFelling): Int {
         val dropsAtOrigin = ArrayList<ItemStack>()
+        var felled = 0
         for (pos in findConnectedLogs(level, player, origin, config.maxLogs)) {
             if (axe.isEmpty) break  // el hacha se ha roto: la talada se detiene aquí
             val drops = breakLog(level, player, pos, axe) ?: continue
+            felled++
             DioritineAxeItem.addLogWear(axe, player, config.logsPerDurabilityPoint)
             if (config.dropsAtOrigin) {
                 dropsAtOrigin += drops
@@ -87,6 +94,7 @@ object TreeFeller {
             }
         }
         dropAllAt(level, origin, dropsAtOrigin)
+        return felled
     }
 
     /**

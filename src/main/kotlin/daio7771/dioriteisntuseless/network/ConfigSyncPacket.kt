@@ -12,6 +12,7 @@ import net.minecraft.network.FriendlyByteBuf
  * - Diorita: el cliente calcula cuánto tarda en romperse un bloque con su propia dureza. Si no
  *   coincide con la del servidor, el bloque "se rompe" en pantalla y luego reaparece.
  * - Durabilidad del hacha (la de arranque del servidor): para que la barra del cliente cuadre.
+ * - Árboles antes de romperse el hacha (versión 2): también para la barra.
  *
  * Formato: [VERSION] y luego los campos. Las versiones futuras solo pueden AÑADIR campos al final;
  * un cliente antiguo lee los que conoce e ignora el resto, y uno nuevo que reciba una versión
@@ -20,6 +21,7 @@ import net.minecraft.network.FriendlyByteBuf
 class ConfigSyncPacket(
     val diorite: DiuConfig.Diorite,
     val axeDurability: Int,
+    val treesBeforeBreaking: Int,
 ) : FabricPacket {
 
     override fun write(buf: FriendlyByteBuf) {
@@ -29,18 +31,20 @@ class ConfigSyncPacket(
         buf.writeFloat(diorite.hardness)
         buf.writeFloat(diorite.blastResistance)
         buf.writeVarInt(axeDurability)
+        // Versión 2
+        buf.writeVarInt(treesBeforeBreaking)
     }
 
     override fun getType(): PacketType<ConfigSyncPacket> = TYPE
 
     companion object {
-        const val VERSION = 1
+        const val VERSION = 2
 
         val TYPE: PacketType<ConfigSyncPacket> = PacketType.create(Dioriteisntuseless.id("config_sync"), ::read)
 
         private fun read(buf: FriendlyByteBuf): ConfigSyncPacket {
             // La versión 1 es la primera: todo paquete válido trae al menos sus campos.
-            buf.readVarInt()
+            val version = buf.readVarInt()
             val packet = ConfigSyncPacket(
                 diorite = DiuConfig.Diorite(
                     enabled = buf.readBoolean(),
@@ -48,6 +52,8 @@ class ConfigSyncPacket(
                     blastResistance = buf.readFloat(),
                 ),
                 axeDurability = buf.readVarInt(),
+                // Un servidor de la versión 1 no rompía el hacha por árboles: sin límite.
+                treesBeforeBreaking = if (version >= 2) buf.readVarInt() else 0,
             )
             // Campos de versiones más nuevas del mod que esta no conoce.
             buf.skipBytes(buf.readableBytes())

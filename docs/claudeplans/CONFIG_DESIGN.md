@@ -167,3 +167,15 @@ Probar en el juego al terminar cada paso.
 - [ ] Sin Cloth Config ni Mod Menu → el mod funciona y el JSON se puede editar a mano.
 - [ ] Con Cloth Config + Mod Menu → la pantalla aparece, guarda y aplica los cambios.
 - [ ] Un jugador sin permisos de operador no puede usar `/diu reload`.
+
+---
+
+## 10. Añadido después (2026-10-08)
+
+| Clave JSON | Tipo | Por defecto | Rango | Se aplica | Sincronizada al cliente |
+|---|---|---|---|---|---|
+| `treeFelling.treesBeforeBreaking` | int | `7` | 0 – 1000 (0 = sin límite) | En caliente | **Sí** (para la barra; paquete versión 2) |
+
+- El hacha se rompe al talar ese número de **árboles enteros** (talada que rompe más de un tronco; troncos sueltos y Shift no cuentan), le quede la durabilidad que le quede. En creativo no cuenta.
+- Cuenta en el NBT del hacha (`DioritineTrees`). Reparar en el yunque **con lingotes** la pone a 0, incluso con la durabilidad al máximo (gasta 1 lingote). Mending y combinar hachas en el yunque no la tocan.
+- La barra del hacha muestra lo que esté más cerca de romperla: durabilidad o árboles.

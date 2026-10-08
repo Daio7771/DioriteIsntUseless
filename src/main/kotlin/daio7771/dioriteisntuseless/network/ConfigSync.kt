@@ -31,5 +31,8 @@ object ConfigSync {
         ServerPlayNetworking.send(player, packet())
     }
 
-    private fun packet() = ConfigSyncPacket(ModConfig.current.diorite, ModConfig.axeDurabilityAtStartup)
+    private fun packet(): ConfigSyncPacket {
+        val config = ModConfig.current
+        return ConfigSyncPacket(config.diorite, ModConfig.axeDurabilityAtStartup, config.treeFelling.treesBeforeBreaking)
+    }
 }

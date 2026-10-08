@@ -107,6 +107,15 @@ object DiuConfigScreen {
                     .setSaveConsumer { treeFelling = treeFelling.copy(sneakMode = it) }
                     .build()
             )
+            addEntry(
+                entries.startIntField(text("treeFelling.treesBeforeBreaking"), current.treeFelling.treesBeforeBreaking)
+                    .setDefaultValue(defaults.treeFelling.treesBeforeBreaking)
+                    .setMin(DiuConfig.Limits.TREES_BEFORE_BREAKING.first)
+                    .setMax(DiuConfig.Limits.TREES_BEFORE_BREAKING.last)
+                    .setTooltip(text("treeFelling.treesBeforeBreaking.tooltip"))
+                    .setSaveConsumer { treeFelling = treeFelling.copy(treesBeforeBreaking = it) }
+                    .build()
+            )
         }
 
         builder.getOrCreateCategory(text("category.axe")).apply {

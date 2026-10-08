@@ -4,6 +4,7 @@ import daio7771.dioriteisntuseless.Dioriteisntuseless.Companion.LOGGER
 import daio7771.dioriteisntuseless.block.DioriteStats
 import daio7771.dioriteisntuseless.config.DiuConfig
 import daio7771.dioriteisntuseless.config.ModConfig
+import daio7771.dioriteisntuseless.item.DioritineAxeItem
 import daio7771.dioriteisntuseless.mixin.client.ItemAccessor
 import daio7771.dioriteisntuseless.network.ConfigSyncPacket
 import daio7771.dioriteisntuseless.registry.ModItems
@@ -40,14 +41,17 @@ object ClientConfigSync {
     private fun onServerValues(packet: ConfigSyncPacket) {
         if (Minecraft.getInstance().hasSingleplayerServer()) return
         // Una línea al entrar y otra por /diu reload: útil si alguien ve bloques que reaparecen.
-        LOGGER.info("Using the server's values: diorite {}, axe durability {}.", packet.diorite, packet.axeDurability)
+        LOGGER.info("Using the server's values: diorite {}, axe durability {}, trees before breaking {}.",
+            packet.diorite, packet.axeDurability, packet.treesBeforeBreaking)
         DioriteStats.applyServerValues(packet.diorite)
         setAxeDurability(packet.axeDurability)
+        DioritineAxeItem.serverTreesBeforeBreaking = packet.treesBeforeBreaking
     }
 
     private fun useLocalValues() {
         DioriteStats.clearServerValues()
         setAxeDurability(ModConfig.axeDurabilityAtStartup)
+        DioritineAxeItem.serverTreesBeforeBreaking = null
     }
 
     private fun setAxeDurability(durability: Int) {

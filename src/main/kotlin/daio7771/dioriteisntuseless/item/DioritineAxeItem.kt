@@ -1,7 +1,11 @@
 package daio7771.dioriteisntuseless.item
 
+import daio7771.dioriteisntuseless.config.ModConfig
+import daio7771.dioriteisntuseless.registry.ModItems
 import net.minecraft.core.BlockPos
+import net.minecraft.stats.Stats
 import net.minecraft.tags.BlockTags
+import net.minecraft.util.Mth
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
@@ -10,6 +14,7 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.state.BlockState
+import kotlin.math.min
 
 /**
  * Hacha de dioritina: muy buena con la madera e inútil para todo lo demás.
@@ -31,6 +36,25 @@ class DioritineAxeItem(properties: Item.Properties) :
     override fun mineBlock(stack: ItemStack, level: Level, state: BlockState, pos: BlockPos, miner: LivingEntity): Boolean {
         if (state.`is`(BlockTags.LOGS)) return true
         return super.mineBlock(stack, level, state, pos, miner)
+    }
+
+    // La barra muestra lo que esté más cerca de romper el hacha: la durabilidad o los árboles.
+
+    override fun isBarVisible(stack: ItemStack): Boolean = stack.isDamaged || remainingTreesFraction(stack) < 1f
+
+    override fun getBarWidth(stack: ItemStack): Int = Math.round(remainingFraction(stack) * 13f)
+
+    override fun getBarColor(stack: ItemStack): Int = Mth.hsvToRgb(remainingFraction(stack) / 3f, 1f, 1f)
+
+    private fun remainingFraction(stack: ItemStack): Float {
+        val durability = (stack.maxDamage - stack.damageValue).toFloat() / stack.maxDamage
+        return min(durability, remainingTreesFraction(stack)).coerceIn(0f, 1f)
+    }
+
+    private fun remainingTreesFraction(stack: ItemStack): Float {
+        val limit = treesBeforeBreaking()
+        if (limit <= 0) return 1f
+        return (limit - felledTrees(stack)).toFloat() / limit
     }
 
     companion object {
@@ -62,6 +86,52 @@ class DioritineAxeItem(properties: Item.Properties) :
             }
             stack.removeTagKey(WEAR_TAG)
             stack.hurtAndBreak(1, player) { it.broadcastBreakEvent(EquipmentSlot.MAINHAND) }
+        }
+
+        /** Árboles enteros talados desde que se hizo o se reparó en el yunque con lingotes, en el NBT del hacha. */
+        private const val TREES_TAG = "DioritineTrees"
+
+        /**
+         * treeFelling.treesBeforeBreaking del servidor remoto al que está conectado este cliente, o
+         * null (servidor dedicado, un solo jugador o sin conectar: vale la configuración local).
+         * Solo lo usa la barra; la rotura la decide siempre el servidor con su configuración.
+         */
+        @Volatile
+        var serverTreesBeforeBreaking: Int? = null
+
+        private fun treesBeforeBreaking(): Int =
+            serverTreesBeforeBreaking ?: ModConfig.current.treeFelling.treesBeforeBreaking
+
+        fun felledTrees(stack: ItemStack): Int = stack.tag?.getInt(TREES_TAG) ?: 0
+
+        /** true si [stack] es un hacha de dioritina con árboles talados en la cuenta. */
+        @JvmStatic
+        fun hasFelledTrees(stack: ItemStack): Boolean = stack.`is`(ModItems.DIORITINE_AXE) && felledTrees(stack) > 0
+
+        /** Para el yunque: reparar con lingotes reinicia la cuenta. A otros ítems no les hace nada. */
+        @JvmStatic
+        fun resetFelledTrees(stack: ItemStack) {
+            if (stack.`is`(ModItems.DIORITINE_AXE)) stack.removeTagKey(TREES_TAG)
+        }
+
+        /**
+         * Cuenta un árbol entero talado. Al llegar a [treesBeforeBreaking] el hacha se rompe,
+         * le quede la durabilidad que le quede (y aunque tenga Unbreaking). 0 = sin límite.
+         * En creativo no cuenta.
+         */
+        fun addFelledTree(stack: ItemStack, player: Player, treesBeforeBreaking: Int) {
+            if (player.abilities.instabuild || stack.isEmpty || treesBeforeBreaking <= 0) return
+            val trees = felledTrees(stack) + 1
+            if (trees < treesBeforeBreaking) {
+                stack.orCreateTag.putInt(TREES_TAG, trees)
+                return
+            }
+            // Lo mismo que hace vanilla cuando una herramienta se queda sin durabilidad.
+            player.broadcastBreakEvent(EquipmentSlot.MAINHAND)
+            val item = stack.item
+            stack.shrink(1)
+            player.awardStat(Stats.ITEM_BROKEN.get(item))
+            stack.damageValue = 0
         }
     }
 }

@@ -57,6 +57,10 @@ internal object ConfigCodec {
                 ),
                 dropsAtOrigin = reader.boolean(treeFelling, "dropsAtOrigin", defaults.treeFelling.dropsAtOrigin),
                 sneakMode = reader.enum(treeFelling, "sneakMode", defaults.treeFelling.sneakMode, SneakMode.entries),
+                treesBeforeBreaking = reader.int(
+                    treeFelling, "treesBeforeBreaking", defaults.treeFelling.treesBeforeBreaking,
+                    DiuConfig.Limits.TREES_BEFORE_BREAKING,
+                ),
             ),
             axe = DiuConfig.Axe(
                 durability = reader.int(axe, "durability", defaults.axe.durability, DiuConfig.Limits.AXE_DURABILITY),
@@ -95,6 +99,7 @@ internal object ConfigCodec {
             addProperty("logsPerDurabilityPoint", config.treeFelling.logsPerDurabilityPoint)
             addProperty("dropsAtOrigin", config.treeFelling.dropsAtOrigin)
             addProperty("sneakMode", config.treeFelling.sneakMode.name)
+            addProperty("treesBeforeBreaking", config.treeFelling.treesBeforeBreaking)
         }
         section(root, "axe").apply {
             addProperty("durability", config.axe.durability)
