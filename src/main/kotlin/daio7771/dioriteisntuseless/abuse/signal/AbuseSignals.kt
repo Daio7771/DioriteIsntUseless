@@ -12,7 +12,7 @@ import net.minecraft.server.level.ServerPlayer
  */
 object AbuseSignals {
 
-    private val SIGNALS: List<AbuseSignal> = listOf(MorseSignal)
+    private val SIGNALS: List<AbuseSignal> = listOf(MorseSignal, NonsenseNameSignal)
 
     /**
      * Ticks jugados entre señales, por nivel (HORROR_DESIGN.md, apartado 4):

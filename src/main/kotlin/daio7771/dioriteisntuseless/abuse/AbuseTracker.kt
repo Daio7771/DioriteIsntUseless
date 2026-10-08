@@ -4,6 +4,7 @@ import daio7771.dioriteisntuseless.Dioriteisntuseless.Companion.LOGGER
 import daio7771.dioriteisntuseless.abuse.morse.MorseBeeper
 import daio7771.dioriteisntuseless.abuse.morse.MorsePhrases
 import daio7771.dioriteisntuseless.abuse.signal.AbuseSignals
+import daio7771.dioriteisntuseless.abuse.signal.NonsenseNameSignal
 import daio7771.dioriteisntuseless.config.DiuConfig
 import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.registry.ModItems
@@ -118,6 +119,7 @@ object AbuseTracker {
         state.level = level.coerceIn(0, MAX_LEVEL)
         state.levelReachedAt = state.playTicks
         AbuseSignals.schedule(player, state)
+        NonsenseNameSignal.clear(player)
         data.setDirty()
     }
 
