@@ -4,7 +4,9 @@
   "version": "${version}",
   "name": "DioriteIsntUseless",
   "description": "",
-  "authors": [],
+  "authors": [
+    "Daio7771"
+  ],
   "contact": {},
   "license": "MIT",
   "icon": "assets/dioriteisntuseless/icon.png",
