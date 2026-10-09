@@ -7,8 +7,8 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
 import net.minecraft.server.level.ServerPlayer
 
 /**
- * Lo que el cliente del jugador afectado necesita saber del Abuse Mode (AbuseStatePacket), y el
- * botón "Start over" de los créditos (StartOverPacket).
+ * What the affected player's client needs to know about the Abuse Mode (AbuseStatePacket), and the
+ * "Start over" button of the credits (StartOverPacket).
  */
 object AbuseStateSync {
 
@@ -17,26 +17,26 @@ object AbuseStateSync {
     }
 
     /**
-     * Manda el estado al cliente del jugador (al cambiar, al subir de nivel, al entrar, tras
-     * "Start over" y al activar o desactivar el Abuse Mode).
+     * Sends the state to the player's client (when it changes, on level up, on join, after
+     * "Start over" and when the Abuse Mode is enabled or disabled).
      */
     fun sync(player: ServerPlayer) {
         if (!ServerPlayNetworking.canSend(player, AbuseStatePacket.TYPE)) return
         val state = AbuseData.get(player.server).getIfPresent(player.uuid)
         val creditsDue = state != null && Ending.creditsDue(state)
-        // Desactivado, no suena nada (aunque lo ya hecho, como la diorita inútil, siga).
+        // When disabled nothing plays (even if what was already done, like useless diorite, stays).
         val level = if (state != null && AbuseMode.active) state.level else 0
         ServerPlayNetworking.send(player, AbuseStatePacket(DioriteUselessness.isUseless(player), creditsDue, level))
     }
 
-    /** Solo se acepta si de verdad le tocan los créditos: un cliente no puede reiniciarse cuando quiera. */
+    /** Only accepted if the credits really are due: a client cannot start over whenever it wants. */
     private fun onStartOverPressed(player: ServerPlayer) {
         if (!AbuseMode.healthy) return
         AbuseMode.guard("start over from the credits") {
             val state = AbuseData.get(player.server).getIfPresent(player.uuid)
             if (state == null || !Ending.creditsDue(state)) {
                 LOGGER.debug("Abuse mode: ignoring a start over request from {}: no credits due.", player.gameProfile.name)
-                sync(player)  // por si su cliente creía otra cosa
+                sync(player)  // in case their client believed otherwise
                 return
             }
             StartOver.run(player.server, player.uuid)

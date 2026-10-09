@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
 """
-Diorite Isn't Useless — generador de los pitidos del Morse (OGG Vorbis, mono).
+Diorite Isn't Useless — generator of the Morse beeps (OGG Vorbis, mono).
 
-Genera dot.ogg (punto) y dash.ogg (raya): un seno puro y suave, con entrada y
-salida en rampa para que no haya chasquidos (regla de oro 5: nada de sonidos
-fuertes de golpe). Duran exactamente 1 y 3 unidades del Morse (MorseBeeper usa
-una unidad de 2 ticks = 100 ms).
+Generates dot.ogg and dash.ogg: a pure, soft sine wave, ramped in and out so there
+are no clicks (golden rule 5: no loud, sudden sounds). They last exactly 1 and 3
+Morse units (MorseBeeper uses a unit of 2 ticks = 100 ms).
 
-Uso:
-    python generate_sounds.py               -> genera en ./out
-    python generate_sounds.py --out DIR     -> genera en DIR
-    python generate_sounds.py --wav         -> además, copias .wav para escucharlas
+Usage:
+    python generate_sounds.py               -> generates into ./out
+    python generate_sounds.py --out DIR     -> generates into DIR
+    python generate_sounds.py --wav         -> also writes .wav copies to listen to
 
-Destino en el mod: src/main/resources/assets/dioriteisntuseless/sounds/morse/
+Destination in the mod: src/main/resources/assets/dioriteisntuseless/sounds/morse/
 
-Necesita libsndfile con soporte de Vorbis (en Debian/Ubuntu: paquete libsndfile1).
-No usa paquetes de Python externos: llama a libsndfile con ctypes.
+Needs libsndfile with Vorbis support (on Debian/Ubuntu: package libsndfile1).
+It uses no external Python packages: it calls libsndfile through ctypes.
 """
 
 import argparse
@@ -26,23 +25,23 @@ import sys
 from pathlib import Path
 
 # --------------------------------------------------------------------------
-# Sonido
+# Sound
 # --------------------------------------------------------------------------
 
 SAMPLE_RATE = 44100
-UNIT_SECONDS = 0.100   # 2 ticks: debe coincidir con MorseBeeper.UNIT_TICKS
-FREQUENCY = 620.0      # Hz: el tono clásico del Morse, sin ser agudo
-AMPLITUDE = 0.30       # pico (1.0 = máximo); el juego lo baja aún más (volumen 0.35)
-RAMP_SECONDS = 0.012   # entrada y salida suaves, sin chasquido
+UNIT_SECONDS = 0.100   # 2 ticks: must match MorseBeeper.UNIT_TICKS
+FREQUENCY = 620.0      # Hz: the classic Morse tone, without being shrill
+AMPLITUDE = 0.30       # peak (1.0 = maximum); the game lowers it even more (volume 0.35)
+RAMP_SECONDS = 0.012   # soft fade in and out, no click
 
 SOUNDS = {
-    "dot": 1,   # unidades
+    "dot": 1,   # units
     "dash": 3,
 }
 
 
 def tone(units: int) -> list[float]:
-    """Seno de `units` unidades con rampas de coseno al principio y al final."""
+    """Sine wave lasting `units` units, with cosine ramps at the start and at the end."""
     total = round(SAMPLE_RATE * UNIT_SECONDS * units)
     ramp = round(SAMPLE_RATE * RAMP_SECONDS)
     samples = []
@@ -57,7 +56,7 @@ def tone(units: int) -> list[float]:
 
 
 # --------------------------------------------------------------------------
-# Escritura con libsndfile
+# Writing with libsndfile
 # --------------------------------------------------------------------------
 
 SFM_WRITE = 0x20
@@ -116,8 +115,8 @@ def write(lib, path: Path, samples: list[float], file_format: int) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--out", type=Path, default=Path("out"), help="carpeta de salida (por defecto ./out)")
-    parser.add_argument("--wav", action="store_true", help="genera también .wav para escucharlos")
+    parser.add_argument("--out", type=Path, default=Path("out"), help="output folder (./out by default)")
+    parser.add_argument("--wav", action="store_true", help="also generate .wav files to listen to")
     args = parser.parse_args()
 
     lib = load_libsndfile()

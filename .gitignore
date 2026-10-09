@@ -19,13 +19,13 @@ bin/
 .vscode/
 *.launch
 
-# Fabric: carpeta de ejecución (mundos, logs, eula, config del servidor)
+# Fabric: run folder (worlds, logs, eula, server config)
 run/
 
 # Python
 __pycache__/
 
-# Sistema / JVM
+# System / JVM
 .DS_Store
 Thumbs.db
 hs_err_*.log

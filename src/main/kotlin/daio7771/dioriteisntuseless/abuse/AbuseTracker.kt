@@ -18,29 +18,29 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.block.state.BlockState
 
 /**
- * Cuenta el abuso de cada jugador y sube su nivel.
+ * Counts the abuse of every player and raises their level.
  *
- * El abuso son los árboles enteros talados con el hacha de dioritina (los cuenta TreeFeller) y las
- * picadas 3x3 con el pico (las cuenta AreaMiner), igual que los límites de cada herramienta; en
- * creativo no cuentan. Cada nivel pide abuseMode.treesPerLevel árboles o abuseMode.pickaxeSteps
- * picadas desde el anterior, o una mezcla (ver [stepReached]), sin tiempo mínimo: el mod se harta
- * en cuanto se abusa de él.
+ * Abuse is whole trees felled with the dioritine axe (counted by TreeFeller) and 3x3 strikes with
+ * the pickaxe (counted by AreaMiner), the same ones that count towards each tool's limit; in
+ * creative they don't count. Each level asks for abuseMode.treesPerLevel trees or
+ * abuseMode.pickaxeSteps strikes since the previous one, or a mix (see [stepReached]), with no
+ * minimum time: the mod gets fed up as soon as it is abused.
  *
- * Todo ocurre en el hilo del servidor.
+ * Everything happens on the server thread.
  */
 object AbuseTracker {
 
     const val TICKS_PER_DAY = 24_000L
-    /** Último nivel al que se sube por árboles y picadas (el del cartel). */
+    /** Last level reached through trees and strikes (the one with the sign). */
     const val MAX_LEVEL = DiuConfig.AbuseMode.LEVELS
 
-    /** El final (fases A y B, y después los créditos). Se llega desde el 4 (ver Ending). */
+    /** The ending (phases A and B, then the credits). Reached from level 4 (see Ending). */
     const val LEVEL_FINAL = MAX_LEVEL + 1
 
-    /** Cada cuánto (en ticks jugados) se comprueba si sube de nivel. */
+    /** How often (in ticks played) the level-up check runs. */
     private const val CHECK_INTERVAL = 20L
 
-    /** [AbuseMode.active] en el tick anterior: si cambia, los clientes se enteran (el fondo para o vuelve). */
+    /** [AbuseMode.active] on the previous tick: if it changes, clients are told (the background sound stops or comes back). */
     private var wasActive = false
 
     fun init() {
@@ -52,7 +52,7 @@ object AbuseTracker {
             AbuseMode.resetSession()
             wasActive = false
         }
-        // En un solo jugador el juego sigue abierto entre mundos: no se arrastra nada al siguiente.
+        // In single player the game stays open between worlds: nothing carries over to the next one.
         ServerLifecycleEvents.SERVER_STOPPED.register {
             MorseBeeper.clear()
             CaveSounds.clear()
@@ -66,18 +66,18 @@ object AbuseTracker {
         AbuseMode.guard("player join") {
             StartOver.onJoin(player)
             if (AbuseMode.active) Ending.onJoin(player, AbuseData.get(player.server))
-            // Su cliente no recuerda nada de la sesión anterior.
+            // Their client remembers nothing from the previous session.
             AbuseStateSync.sync(player)
         }
     }
 
-    /** Lo llama TreeFeller cada vez que [player] tala un árbol entero con el hacha. */
+    /** Called by TreeFeller every time [player] fells a whole tree with the axe. */
     fun onTreeFelled(player: ServerPlayer) = countAction(player, "tree counting") {
         it.treesFelled++
         it.treesAtLevel++
     }
 
-    /** Lo llama AreaMiner cada vez que [player] da una picada 3x3 con el pico. */
+    /** Called by AreaMiner every time [player] makes a 3x3 strike with the pickaxe. */
     fun onStrike(player: ServerPlayer) = countAction(player, "strike counting") {
         it.strikes++
         it.strikesAtLevel++
@@ -95,12 +95,12 @@ object AbuseTracker {
         }
     }
 
-    /** Lo que pide un paso: [trees] árboles o [strikes] picadas (o una mezcla). */
+    /** What a step asks for: [trees] trees or [strikes] strikes (or a mix). */
     data class Step(val trees: Int, val strikes: Int)
 
     /**
-     * Lo que pide el siguiente paso desde el nivel de [state] (subir de nivel o, en el 4, el
-     * final), o null si ya está en el final.
+     * What the next step from the level of [state] asks for (going up a level or, at level 4,
+     * the ending), or null if it is already at the ending.
      */
     fun nextStep(state: PlayerAbuse, config: DiuConfig.AbuseMode = ModConfig.current.abuseMode): Step? = when {
         state.level < MAX_LEVEL -> Step(config.treesPerLevel[state.level], config.pickaxeSteps[state.level])
@@ -109,8 +109,8 @@ object AbuseTracker {
     }
 
     /**
-     * Lo hecho hacia el siguiente paso: árboles / árboles pedidos + picadas / picadas pedidas.
-     * Con 1 (100 %) o más, toca. Null si ya está en el final.
+     * Progress towards the next step: trees / trees asked for + strikes / strikes asked for.
+     * At 1 (100 %) or more, it is due. Null if it is already at the ending.
      */
     fun progress(state: PlayerAbuse, config: DiuConfig.AbuseMode = ModConfig.current.abuseMode): Double? {
         val step = nextStep(state, config) ?: return null
@@ -118,9 +118,9 @@ object AbuseTracker {
     }
 
     /**
-     * true si ya ha hecho lo que pide el siguiente paso: por ejemplo, en el nivel 0, 17 árboles,
-     * 10 picadas o 9 árboles y 5 picadas. Se calcula con enteros para que 17 de 17 sea
-     * exactamente el 100 %.
+     * true if the player has done what the next step asks for: for example, at level 0, 17 trees,
+     * 10 strikes or 9 trees and 5 strikes. Computed with integers so that 17 out of 17 is
+     * exactly 100 %.
      */
     fun stepReached(state: PlayerAbuse, config: DiuConfig.AbuseMode = ModConfig.current.abuseMode): Boolean {
         val step = nextStep(state, config) ?: return false
@@ -135,7 +135,7 @@ object AbuseTracker {
             AbuseMode.guard("state sync") { server.playerList.players.forEach(AbuseStateSync::sync) }
         }
         if (!active) {
-            // Desactivado en caliente: las señales se detienen al momento, también los pitidos.
+            // Disabled while running: signals stop right away, beeps too.
             MorseBeeper.clear()
             CaveSounds.clear()
             return
@@ -151,10 +151,10 @@ object AbuseTracker {
                 state.playTicks++
                 if (state.playTicks % CHECK_INTERVAL != 0L) continue
                 if (tryLevelUp(state, config)) {
-                    // En debug para no destripar nada a quien lea el log.
+                    // At debug level so nothing is spoiled for whoever reads the log.
                     LOGGER.debug("Abuse mode: {} reached level {}.", player.gameProfile.name, state.level)
                     AbuseSignals.schedule(player, state)
-                    AbuseStateSync.sync(player)  // su fondo cambia de nivel
+                    AbuseStateSync.sync(player)  // their background sound changes level
                 }
                 AbuseSignals.tick(player, state)
                 CaveSounds.tick(player, state)
@@ -166,8 +166,9 @@ object AbuseTracker {
     }
 
     /**
-     * Sube un nivel si ha hecho en este lo que pide ([stepReached]). Como mucho un nivel cada vez;
-     * las cuentas del nuevo nivel empiezan en 0. Del 4 al final no se sube aquí (ver Ending).
+     * Goes up one level if the player has done what this level asks for ([stepReached]). At most
+     * one level at a time; the counts of the new level start at 0. Level 4 to the ending is not
+     * handled here (see Ending).
      */
     private fun tryLevelUp(state: PlayerAbuse, config: DiuConfig.AbuseMode): Boolean {
         if (state.level >= MAX_LEVEL || !stepReached(state, config)) return false
@@ -178,9 +179,9 @@ object AbuseTracker {
     }
 
     /**
-     * Para el comando de pruebas: pone el nivel directamente y reinicia las cuentas del nivel.
-     * [LEVEL_FINAL] hace ya la fase A (sin esperar a que entre o duerma). Salir del final así
-     * no devuelve lo retirado: para eso está "Start over".
+     * For the testing command: sets the level directly and resets the counts of the level.
+     * [LEVEL_FINAL] runs phase A right away (without waiting for a join or a sleep). Leaving the
+     * ending this way does not give back what was taken: that is what "Start over" is for.
      */
     fun setLevel(server: MinecraftServer, player: ServerPlayer, level: Int) {
         val data = AbuseData.get(server)
@@ -193,7 +194,7 @@ object AbuseTracker {
             state.level = target
             state.treesAtLevel = 0
             state.strikesAtLevel = 0
-            // Por debajo del 4, volver al 4 vuelve a sacar EL cartel (el anterior sigue registrado).
+            // Below 4, going back to 4 brings THE sign out again (the previous one stays recorded).
             if (target < MAX_LEVEL) state.finalSignPlacedAt = -1
             state.endingDueAt = -1
             state.endingStartedAt = -1
@@ -205,7 +206,7 @@ object AbuseTracker {
         data.setDirty()
     }
 
-    /** Para el comando de pruebas: lleva al jugador a los créditos (hace la fase A si hace falta). */
+    /** For the testing command: takes the player to the credits (running phase A if needed). */
     fun skipToCredits(server: MinecraftServer, player: ServerPlayer): Boolean {
         if (!AbuseMode.active) return false
         AbuseMode.guard("skip to credits") {
@@ -216,14 +217,14 @@ object AbuseTracker {
         return AbuseMode.active
     }
 
-    /** "Start over" de [player]. Devuelve false si no se ha podido (error interno; ver el log). */
+    /** "Start over" for [player]. Returns false if it could not be done (internal error; see the log). */
     fun startOver(server: MinecraftServer, player: ServerPlayer): Boolean {
         if (!AbuseMode.healthy) return false
         AbuseMode.guard("start over") { StartOver.run(server, player.uuid) }
         return AbuseMode.healthy
     }
 
-    /** Para el comando de pruebas: un cambio en el mundo registrado, como los de las señales. */
+    /** For the testing command: a recorded world change, like the ones made by signals. */
     fun testWorldChange(player: ServerPlayer, level: ServerLevel, pos: BlockPos, state: BlockState): Boolean {
         if (!AbuseMode.healthy) return false
         var changed = false
@@ -233,7 +234,7 @@ object AbuseTracker {
 
     fun worldChangeCount(server: MinecraftServer, player: ServerPlayer): Int = WorldChanges.get(server).count(player.uuid)
 
-    /** Para el comando de pruebas: lanza una señal ya. Devuelve false si no hay ninguna posible. */
+    /** For the testing command: fires a signal now. Returns false if none is possible. */
     fun forceSignal(server: MinecraftServer, player: ServerPlayer, id: String?): Boolean {
         if (!AbuseMode.active) return false
         var ran = false

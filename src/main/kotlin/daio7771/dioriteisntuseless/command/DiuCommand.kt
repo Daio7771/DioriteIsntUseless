@@ -23,12 +23,12 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.block.state.BlockState
 
 /**
- * /diu reload: vuelve a leer la configuración sin reiniciar.
- * /diu abuse <jugador> [nivel | signal [tipo] | credits | reset | change <pos> <bloque>]: SOLO EN
- * DESARROLLO, para pruebas del Abuse Mode; consulta o cambia el nivel, lanza una señal ya (una
- * concreta o al azar), lleva a los créditos, hace "Start over" o hace un cambio en el mundo
- * registrado (para probar que "Start over" lo deshace).
- * Solo operadores (nivel 2).
+ * /diu reload: reads the config again without restarting.
+ * /diu abuse <player> [level | signal [type] | credits | reset | change <pos> <block>]: DEVELOPMENT
+ * ONLY, for testing the Abuse Mode; shows or changes the level, fires a signal now (a specific
+ * one or a random one), skips to the credits, runs "Start over" or makes a recorded world change
+ * (to test that "Start over" undoes it).
+ * Operators only (level 2).
  */
 object DiuCommand {
 
@@ -37,8 +37,8 @@ object DiuCommand {
     private const val ABUSE_LANG = "commands.dioriteisntuseless.abuse"
 
     fun init() {
-        // /diu abuse solo existe en desarrollo (runClient/runServer): en el mod publicado no se
-        // registra, así que ni aparece en el autocompletado.
+        // /diu abuse only exists in development (runClient/runServer): in the published mod it is
+        // not registered, so it does not even show up in autocompletion.
         val withTestCommands = FabricLoader.getInstance().isDevelopmentEnvironment
         CommandRegistrationCallback.EVENT.register { dispatcher, buildContext, _ ->
             val root = Commands.literal("diu")
@@ -107,7 +107,7 @@ object DiuCommand {
         return when (val result = ModConfig.reload()) {
             is ModConfig.ReloadResult.Success -> {
                 ConfigSync.broadcast(source.server)
-                // Como el /reload vanilla: también se avisa a los demás operadores.
+                // Like the vanilla /reload: the other operators are told too.
                 source.sendSuccess({ Component.translatable("$LANG.success") }, true)
                 if (result.corrections > 0) {
                     source.sendSuccess({ Component.translatable("$LANG.corrected", result.corrections) }, false)
@@ -147,7 +147,7 @@ object DiuCommand {
 
     private fun setAbuse(source: CommandSourceStack, player: ServerPlayer, level: Int): Int {
         AbuseTracker.setLevel(source.server, player, level)
-        // Como /gamemode: también se avisa a los demás operadores (y queda en el log).
+        // Like /gamemode: the other operators are told too (and it goes to the log).
         source.sendSuccess({ Component.translatable("$ABUSE_LANG.set", player.displayName, level) }, true)
         warnIfInactive(source)
         return level

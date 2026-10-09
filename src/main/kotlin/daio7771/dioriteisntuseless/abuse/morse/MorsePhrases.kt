@@ -4,13 +4,13 @@ import daio7771.dioriteisntuseless.Dioriteisntuseless.Companion.LOGGER
 import daio7771.dioriteisntuseless.abuse.text.TextListResource
 
 /**
- * Frases de los mensajes en Morse, en data/dioriteisntuseless/abuse/morse_phrases.json:
+ * Phrases of the Morse messages, in data/dioriteisntuseless/abuse/morse_phrases.json:
  *
  * ```
  * { "replace": false, "phrases": ["DELETE THIS MOD", "..."] }
  * ```
  *
- * Ampliables con datapacks (ver TextListResource). Se traducen a Morse al cargarlas.
+ * Datapacks can add more (see TextListResource). They are translated to Morse when loaded.
  */
 object MorsePhrases {
 
@@ -20,7 +20,7 @@ object MorsePhrases {
         phrases = texts.mapNotNull(::encode)
     }
 
-    /** Frases ya traducidas a Morse. Se sustituye entera al recargar. */
+    /** Phrases already translated to Morse. Replaced as a whole on reload. */
     @Volatile
     var phrases: List<Phrase> = emptyList()
         private set

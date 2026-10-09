@@ -7,15 +7,15 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.TitleScreen
 
 /**
- * Decide si la pantalla de aviso va delante del menú principal. MinecraftMixin le pasa cada
- * pantalla que se abre: así el menú principal ni siquiera llega a dibujarse un frame antes del
- * aviso (nada de parpadeos). Se muestra aunque el Abuse Mode esté desactivado.
+ * Decides whether the warning screen goes before the main menu. MinecraftMixin passes it every
+ * screen that opens: that way the main menu is not drawn for even one frame before the warning
+ * (no flicker). It is shown even if the Abuse Mode is disabled.
  *
- * Solo se usa desde el hilo del cliente.
+ * Only used from the client thread.
  */
 object WarningGate {
 
-    /** Ya aceptado en esta sesión: no se vuelve a mostrar aunque no se haya podido guardar. */
+    /** Already accepted this session: not shown again even if it could not be saved. */
     private var dismissed = false
 
     @JvmStatic
@@ -29,7 +29,7 @@ object WarningGate {
                 WarningScreen(screen)
             }
         } catch (e: Exception) {
-            // Regla de oro 1: sin aviso antes que sin juego.
+            // Golden rule 1: better no warning than no game.
             LOGGER.error("Could not show the warning screen.", e)
             dismissed = true
             screen

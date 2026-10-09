@@ -5,22 +5,22 @@ import daio7771.dioriteisntuseless.registry.ModItems
 import net.minecraft.world.item.Tier
 import net.minecraft.world.item.crafting.Ingredient
 
-/** Material de las herramientas de dioritina (hacha y pico). */
+/** Material of the dioritine tools (axe and pickaxe). */
 object DioritineTier : Tier {
 
-    // Perezoso: el ítem del lingote se registra después de cargar esta clase.
+    // Lazy: the ingot item is registered after this class is loaded.
     private val repairWith by lazy { Ingredient.of(ModItems.DIORITINE_INGOT) }
 
-    /** axe.durability tal como estaba al arrancar: el hacha y el pico la fijan al registrarse. */
+    /** axe.durability as it was at startup: the axe and the pickaxe fix it when they are registered. */
     override fun getUses(): Int = ModConfig.axeDurabilityAtStartup
 
-    /** Velocidad en los bloques en los que la herramienta es eficaz (como el hierro). */
+    /** Speed on the blocks the tool is effective on (like iron). */
     override fun getSpeed(): Float = 6.0f
 
-    /** El daño de cada herramienta se fija entero en su clase (DioritineAxeItem, DioritinePickaxeItem). */
+    /** Each tool's damage is set entirely in its class (DioritineAxeItem, DioritinePickaxeItem). */
     override fun getAttackDamageBonus(): Float = 0f
 
-    /** Nivel de hierro: el pico puede sacar diamante y esmeralda. Ningún bloque vanilla de hacha exige nivel. */
+    /** Iron level: the pickaxe can mine diamond and emerald. No vanilla axe block requires a level. */
     override fun getLevel(): Int = 2
 
     override fun getEnchantmentValue(): Int = 14

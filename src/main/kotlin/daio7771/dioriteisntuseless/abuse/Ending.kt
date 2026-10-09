@@ -13,38 +13,39 @@ import net.minecraft.world.Container
 import net.minecraft.world.item.ItemStack
 
 /**
- * El final (HORROR_DESIGN.md, apartado 5). Toca cuando, en el nivel 4 y con EL cartel ya puesto, el
- * jugador ha talado abuseMode.treesUntilEnding árboles o dado la última cifra de
- * abuseMode.pickaxeSteps en picadas (o una mezcla, ver AbuseTracker.stepReached):
+ * The ending (HORROR_DESIGN.md, section 5). It is due when, at level 4 and with THE sign already
+ * placed, the player has felled abuseMode.treesUntilEnding trees or made the last number of
+ * abuseMode.pickaxeSteps in strikes (or a mix, see AbuseTracker.stepReached):
  *
- * - Fase A, "Diorite Is Useless": se le retiran las hachas, picos, lingotes y cristales
- *   (inventario, armadura, mano secundaria, cofre de Ender, cursor y cuadrícula de fabricar) y se
- *   guardan para "Start over". Desde entonces, en sus manos el hacha no tala y el pico no pica 3x3,
- *   y no puede sacar cristales del horno (DioriteUselessness). Morse final: DELETE THIS MOD.
- * - Fase B: 2 min 15 s con todos los ítems con nombres sin sentido y mensajes en el chat cada vez
- *   más rotos, que acaban con USELESS en rojo cada segundo (EndingMessages). Después suena una
- *   última cueva (CaveSounds) y tocan los créditos: su cliente los abre en ese momento si es
- *   tranquilo (si no, en cuanto lo sea), y su botón "Start over" lo vuelve todo a empezar.
+ * - Phase A, "Diorite Is Useless": the axes, pickaxes, ingots and crystals are taken away
+ *   (inventory, armor, offhand, Ender chest, cursor and crafting grid) and kept for
+ *   "Start over". From then on, in their hands the axe does not fell and the pickaxe does not mine
+ *   3x3, and they cannot take crystals out of the furnace (DioriteUselessness). Final Morse:
+ *   DELETE THIS MOD.
+ * - Phase B: 2 min 15 s with every item carrying a nonsense name and chat messages that get more
+ *   and more broken, ending with USELESS in red every second (EndingMessages). Then one last cave
+ *   sound plays (CaveSounds) and the credits are due: their client opens them right then if it is
+ *   a calm moment (if not, as soon as it is), and their "Start over" button starts everything over.
  *
- * Para que no se le vea desaparecer nada de la barra rápida, la fase A espera a un momento en que
- * no mira: al entrar al mundo o al despertarse tras dormir. Si en medio día de juego no ha pasado
- * ninguna de las dos cosas, se hace igualmente.
+ * So nothing is seen vanishing from the hotbar, phase A waits for a moment when they are not
+ * looking: on joining the world or on waking up after sleeping. If neither has happened within
+ * half a game day, it happens anyway.
  */
 object Ending {
 
-    /** Duración de la fase B: lo que tardan los mensajes del final. */
+    /** Length of phase B: as long as the ending messages take. */
     const val PHASE_B_TICKS = EndingMessages.DURATION_TICKS
 
-    /** Si no entra ni duerme en este tiempo desde que toca, la fase A ocurre igualmente. */
+    /** If they neither join nor sleep within this time after it is due, phase A happens anyway. */
     private const val FALLBACK_TICKS = AbuseTracker.TICKS_PER_DAY / 2
 
     /**
-     * La última cueva suena si la fase B acaba de terminar ahora, no al volver a entrar con los
-     * créditos pendientes (se le anuncian otra vez, pero sin sonido).
+     * The last cave sound plays if phase B has just finished, not when joining again with the
+     * credits pending (they are announced again, but silently).
      */
     private const val FINAL_SOUND_TOLERANCE_TICKS = 40L
 
-    /** A partir de aquí la pantalla está completamente a oscuras al dormir. */
+    /** From here on the screen is completely dark while sleeping. */
     private const val DARK_SLEEP_TICKS = 100
 
     private const val FINAL_MORSE = "DELETE THIS MOD"
@@ -58,9 +59,9 @@ object Ending {
     }
 
     /**
-     * Desde el tick del jugador (cada pocos ticks): apunta cuándo empieza a tocar el final, la red
-     * de seguridad del medio día, los mensajes de la fase B y, al acabar esta, el aviso a su
-     * cliente de que tocan los créditos.
+     * From the player tick (every few ticks): notes when the ending becomes due, the half-day
+     * safety net, the phase B messages and, when that phase ends, telling their client the credits
+     * are due.
      */
     fun tick(player: ServerPlayer, state: PlayerAbuse) {
         if (state.level == AbuseTracker.MAX_LEVEL && state.endingDueAt < 0 && state.finalSignPlacedAt >= 0 &&
@@ -80,12 +81,12 @@ object Ending {
         }
     }
 
-    /** La fase B ha terminado: los créditos se abren en el próximo momento tranquilo. */
+    /** Phase B is over: the credits open at the next calm moment. */
     fun creditsDue(state: PlayerAbuse): Boolean =
         state.level == AbuseTracker.LEVEL_FINAL && state.endingStartedAt >= 0 &&
             state.playTicks - state.endingStartedAt >= PHASE_B_TICKS
 
-    /** Para el comando de pruebas: da la fase B por terminada (y hace antes la A si hace falta). */
+    /** For the testing command: marks phase B as finished (running phase A first if needed). */
     fun skipToCredits(player: ServerPlayer, state: PlayerAbuse) {
         if (state.level != AbuseTracker.LEVEL_FINAL) start(player, state)
         state.endingStartedAt = (state.playTicks - PHASE_B_TICKS).coerceAtLeast(0)
@@ -95,14 +96,14 @@ object Ending {
         AbuseStateSync.sync(player)
     }
 
-    /** Al entrar al mundo: si ya toca, empieza; si ya está en la fase final, le recuerda los nombres. */
+    /** On joining the world: if it is due, it starts; if already at the ending, re-sends the names. */
     fun onJoin(player: ServerPlayer, data: AbuseData) {
         val state = data.getIfPresent(player.uuid) ?: return
         if (isDue(state)) {
             start(player, state)
             data.setDirty()
         } else if (state.level == AbuseTracker.LEVEL_FINAL) {
-            NonsenseNameSignal.everything(player)  // su cliente lo olvidó al desconectarse
+            NonsenseNameSignal.everything(player)  // their client forgot them on disconnecting
         }
     }
 
@@ -118,11 +119,11 @@ object Ending {
         return due >= 0 && state.playTicks >= due
     }
 
-    /** playTicks en que empezó a tocar el final, o -1 si aún no toca. */
+    /** playTicks at which the ending became due, or -1 if it is not due yet. */
     private fun dueAt(state: PlayerAbuse): Long =
         if (state.level == AbuseTracker.MAX_LEVEL) state.endingDueAt else -1
 
-    /** Fase A y comienzo de la fase B. También lo usa el comando de pruebas. */
+    /** Phase A and the start of phase B. Also used by the testing command. */
     fun start(player: ServerPlayer, state: PlayerAbuse) {
         state.level = AbuseTracker.LEVEL_FINAL
         state.treesAtLevel = 0
@@ -138,9 +139,9 @@ object Ending {
         AbuseSignals.schedule(player, state)
     }
 
-    /** Retira lo que le dio el mod y lo guarda en [state] para "Start over". Devuelve cuántas pilas. */
+    /** Takes away what the mod gave them and keeps it in [state] for "Start over". Returns how many stacks. */
     private fun takeItems(player: ServerPlayer, state: PlayerAbuse): Int {
-        // Lo que hubiera en una mesa de trabajo abierta vuelve primero al inventario.
+        // Whatever was in an open crafting table goes back to the inventory first.
         if (player.containerMenu !== player.inventoryMenu) player.closeContainer()
         var taken = 0
         val inventory = player.inventory
@@ -153,7 +154,7 @@ object Ending {
             }
         }
         taken += takeFrom(player.enderChestInventory, state)
-        taken += takeFrom(player.inventoryMenu.craftSlots, state)  // la cuadrícula 2x2 del inventario
+        taken += takeFrom(player.inventoryMenu.craftSlots, state)  // the 2x2 inventory crafting grid
         if (take(player.containerMenu.carried, state)) {
             player.containerMenu.carried = ItemStack.EMPTY
             taken++
@@ -173,7 +174,7 @@ object Ending {
         return taken
     }
 
-    /** Si [stack] es del mod, guarda una copia (con su NBT: encantamientos, desgaste...). */
+    /** If [stack] is from the mod, keeps a copy (with its NBT: enchantments, wear...). */
     private fun take(stack: ItemStack, state: PlayerAbuse): Boolean {
         if (stack.isEmpty || !isTakenAtTheEnd(stack)) return false
         state.takenItems += stack.copy()

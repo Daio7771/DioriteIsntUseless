@@ -1,13 +1,13 @@
 package daio7771.dioriteisntuseless.abuse.text
 
 /**
- * Palabras de los carteles del nivel 3, en data/dioriteisntuseless/abuse/sign_words.json:
+ * Words of the level 3 signs, in data/dioriteisntuseless/abuse/sign_words.json:
  *
  * ```
  * { "replace": false, "words": ["stop", "..."] }
  * ```
  *
- * Ampliables con datapacks (ver TextListResource). Deben caber en una línea de cartel.
+ * Datapacks can add more (see TextListResource). They must fit on one sign line.
  */
 object SignWords {
 

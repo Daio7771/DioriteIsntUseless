@@ -21,24 +21,24 @@ import net.minecraft.world.level.block.state.BlockState
 import java.util.UUID
 
 /**
- * Habilidad del Dioritine Axe: al romper un tronco sin Shift, cae el árbol entero
- * (treeFelling.sneakMode puede invertirlo).
+ * Ability of the Dioritine Axe: when breaking a log without Shift, the whole tree comes down
+ * (treeFelling.sneakMode can invert this).
  *
- * Se engancha a PlayerBlockBreakEvents.AFTER, que vanilla+Fabric disparan justo después de
- * quitar el bloque golpeado y antes de gastar la herramienta y soltar sus drops. Todo ocurre
- * en el servidor lógico.
+ * It hooks into PlayerBlockBreakEvents.AFTER, which vanilla+Fabric fire right after removing the
+ * block hit and before using the tool and dropping its items. Everything happens on the logical
+ * server.
  *
- * También cobra el desgaste de todos los troncos que rompe el hacha, con o sin talada, y cuenta
- * los árboles enteros (el hacha se rompe a los treeFelling.treesBeforeBreaking).
- * La configuración se lee una vez por tronco golpeado, así una talada usa los mismos valores
- * de principio a fin aunque se recargue a la vez.
+ * It also charges the wear of every log the axe breaks, felling or not, and counts whole trees
+ * (the axe breaks at treeFelling.treesBeforeBreaking).
+ * The config is read once per log hit, so a felling uses the same values from start to finish
+ * even if it is reloaded at the same time.
  */
 object TreeFeller {
 
     /**
-     * Jugadores con una talada en curso. Los eventos de rotura que dispara la propia talada
-     * (para que otros mods puedan reaccionar) no deben volver a activar la habilidad ni cobrarse
-     * dos veces. Solo se usa desde el hilo del servidor.
+     * Players with a felling in progress. The break events fired by the felling itself (so other
+     * mods can react) must not trigger the ability again nor be charged twice. Only used from the
+     * server thread.
      */
     private val felling = HashSet<UUID>()
 
@@ -52,14 +52,14 @@ object TreeFeller {
         if (!axe.`is`(ModItems.DIORITINE_AXE) || !state.`is`(BlockTags.LOGS)) return
 
         val config = ModConfig.current.treeFelling
-        // Fase A del final del Abuse Mode: en manos de ese jugador, ninguna hacha tala.
+        // Phase A of the Abuse Mode ending: in that player's hands, no axe fells.
         if (!config.enabled || DioriteUselessness.isUseless(player)) {
-            // Hacha normal: 1 de durabilidad por tronco, como vanilla.
+            // Normal axe: 1 durability per log, like vanilla.
             DioritineAxeItem.addLogWear(axe, player, 1)
             return
         }
 
-        // El tronco golpeado cuesta lo mismo que los demás, se tale el árbol o no.
+        // The log hit costs the same as the others, whether the tree is felled or not.
         DioritineAxeItem.addLogWear(axe, player, config.logsPerDurabilityPoint)
         if (!config.sneakMode.usesAbility(player.isShiftKeyDown) || axe.isEmpty) return
 
@@ -69,21 +69,21 @@ object TreeFeller {
         } finally {
             felling -= player.uuid
         }
-        // Un árbol entero = una talada que rompe algo más que el tronco golpeado. Un tronco suelto
-        // no cuenta. Se cobra al final, con los drops ya en el suelo. También es lo que cuenta el
-        // Abuse Mode.
+        // A whole tree = a felling that breaks something besides the log hit. A single log does
+        // not count. It is charged at the end, with the drops already on the ground. It is also
+        // what the Abuse Mode counts.
         if (felled > 0) {
             DioritineAxeItem.addFelledTree(axe, player, config.treesBeforeBreaking)
             AbuseTracker.onTreeFelled(player)
         }
     }
 
-    /** Devuelve cuántos troncos ha roto, sin contar el golpeado. */
+    /** Returns how many logs it broke, not counting the one hit. */
     private fun fell(level: ServerLevel, player: ServerPlayer, axe: ItemStack, origin: BlockPos, config: DiuConfig.TreeFelling): Int {
         val dropsAtOrigin = ArrayList<ItemStack>()
         var felled = 0
         for (pos in findConnectedLogs(level, player, origin, config.maxLogs)) {
-            if (axe.isEmpty) break  // el hacha se ha roto: la talada se detiene aquí
+            if (axe.isEmpty) break  // the axe broke: the felling stops here
             val drops = BlockBreaker.breakAsPlayer(level, player, pos, axe) { it.`is`(BlockTags.LOGS) } ?: continue
             felled++
             DioritineAxeItem.addLogWear(axe, player, config.logsPerDurabilityPoint)
@@ -98,9 +98,9 @@ object TreeFeller {
     }
 
     /**
-     * BFS (sin recursión) por la vecindad de 26 bloques desde el tronco golpeado, que ya es aire.
-     * Devuelve los demás troncos en orden de cercanía, como mucho [maxLogs] - 1. No atraviesa
-     * troncos que el jugador no podría romper ni carga chunks.
+     * BFS (without recursion) through the 26-block neighborhood from the log hit, which is
+     * already air. Returns the other logs ordered by distance, at most [maxLogs] - 1. It does not
+     * go through logs the player could not break and does not load chunks.
      */
     private fun findConnectedLogs(level: ServerLevel, player: ServerPlayer, origin: BlockPos, maxLogs: Int): List<BlockPos> {
         if (maxLogs <= 1) return emptyList()

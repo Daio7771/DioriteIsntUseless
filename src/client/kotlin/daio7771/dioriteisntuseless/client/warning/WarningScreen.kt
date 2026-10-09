@@ -11,10 +11,11 @@ import net.minecraft.network.chat.Component
 import kotlin.math.min
 
 /**
- * Aviso de terror psicológico, antes del menú principal y una sola vez (ver WarningGate).
+ * Psychological horror warning, before the main menu and only once (see WarningGate).
  *
- * Estática a propósito (regla de oro 2): fondo liso, sin animaciones. El botón pasa de desactivado
- * a activado a los [BUTTON_DELAY_MS] para que no se salte sin leer, y Escape no la cierra.
+ * Static on purpose (golden rule 2): plain background, no animations. The button goes from
+ * disabled to enabled after [BUTTON_DELAY_MS] so it is not skipped without reading, and Escape does
+ * not close it.
  */
 class WarningScreen(private val next: Screen) : Screen(Component.translatable("$LANG.title").withStyle(ChatFormatting.YELLOW)) {
 
@@ -27,7 +28,7 @@ class WarningScreen(private val next: Screen) : Screen(Component.translatable("$
     override fun init() {
         bodyLabel = MultiLineLabel.create(font, body, min(width - 40, MAX_TEXT_WIDTH))
         val lineHeight = font.lineHeight + 2
-        // Título, cuerpo y botón, centrados en vertical como un bloque.
+        // Title, body and button, centered vertically as one block.
         val total = font.lineHeight + GAP + bodyLabel.lineCount * lineHeight + GAP + Button.DEFAULT_HEIGHT
         val top = maxOf(10, (height - total) / 2)
         bodyTop = top + font.lineHeight + GAP

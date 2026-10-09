@@ -9,11 +9,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 
 /**
- * En vanilla, burn() copia el resultado completo si la casilla de salida está vacía, pero si
- * ya tiene ítems suma siempre 1 (output.grow(1)), aunque canBurn() sí tiene en cuenta el count
- * del resultado. Aquí se suma el count de la receta.
+ * In vanilla, burn() copies the whole result if the output slot is empty, but if it already has
+ * items it always adds 1 (output.grow(1)), even though canBurn() does take the result's count into
+ * account. Here the recipe's count is added.
  *
- * Para recetas con count 1 (todas las vanilla) el comportamiento no cambia.
+ * For recipes with a count of 1 (every vanilla one) the behavior does not change.
  */
 @Mixin(AbstractFurnaceBlockEntity.class)
 public abstract class AbstractFurnaceBlockEntityMixin {

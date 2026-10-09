@@ -8,8 +8,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Nombres sin sentido del Abuse Mode: solo cambia lo que se muestra en este cliente (ver
- * NonsenseNames). Sin nombres activos, devuelve el original tras un par de comprobaciones baratas.
+ * Abuse Mode nonsense names: it only changes what this client shows (see NonsenseNames). With no
+ * active names, it returns the original after a couple of cheap checks.
  */
 @Mixin(ItemStack.class)
 public abstract class ItemStackMixin {

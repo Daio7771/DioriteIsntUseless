@@ -8,16 +8,16 @@ import net.minecraft.world.item.ItemStack
 import kotlin.math.min
 
 /**
- * Lo que comparten el hacha y el pico de dioritina: se rompen al llegar a un número de usos
- * (árboles, picadas), les quede la durabilidad que les quede, y su barra muestra lo que esté más
- * cerca de romperlos.
+ * What the dioritine axe and pickaxe share: they break on reaching a number of uses (trees,
+ * strikes), whatever durability they have left, and their bar shows whatever is closer to
+ * breaking them.
  */
 internal object ToolWear {
 
     /**
-     * Rompe [stack], la herramienta de la mano principal de [player]: lo mismo que hace vanilla
-     * cuando una herramienta se queda sin durabilidad (sonido, partículas y la estadística
-     * "objeto roto", de la que salen los logros). La pila queda vacía.
+     * Breaks [stack], the tool in the main hand of [player]: the same thing vanilla does when a
+     * tool runs out of durability (sound, particles and the "item broken" statistic, which the
+     * advancements come from). The stack ends up empty.
      */
     fun breakInMainHand(stack: ItemStack, player: Player) {
         player.broadcastBreakEvent(EquipmentSlot.MAINHAND)
@@ -27,11 +27,11 @@ internal object ToolWear {
         stack.damageValue = 0
     }
 
-    /** Fracción (0 a 1) de los [limit] usos que le quedan; 1 si no hay límite. */
+    /** Fraction (0 to 1) of the [limit] uses it has left; 1 if there is no limit. */
     fun remainingUses(used: Int, limit: Int): Float =
         if (limit <= 0) 1f else ((limit - used).toFloat() / limit).coerceIn(0f, 1f)
 
-    /** Para la barra: lo que le queda, por durabilidad o por usos ([usesLeft]), lo que sea menos. */
+    /** For the bar: what it has left, by durability or by uses ([usesLeft]), whichever is less. */
     fun remainingFraction(stack: ItemStack, usesLeft: Float): Float {
         val durability = (stack.maxDamage - stack.damageValue).toFloat() / stack.maxDamage
         return min(durability, usesLeft).coerceIn(0f, 1f)

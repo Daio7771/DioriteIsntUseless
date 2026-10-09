@@ -7,16 +7,16 @@ import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.resources.ResourceLocation
 
 /**
- * Servidor -> cliente del jugador afectado: nombres sin sentido (Abuse Mode, nivel 2 en adelante).
- * Es solo visual: el cliente cambia cómo se muestra el nombre de esos ítems, nunca el ítem.
+ * Server -> client of the affected player: nonsense names (Abuse Mode, level 2 and up).
+ * It is only visual: the client changes how the name of those items is shown, never the item.
  *
- * - [clear] = true: quitar todos los nombres sin sentido (al cambiar de nivel o con "Start over").
- * - [everything] = true (versión 2): fase B del final, todos los ítems salvo la diorita y los del
- *   mod, hasta un [clear].
- * - Si no: mostrar [items] con nombres sin sentido hasta que el jugador los haya tenido a la vista
- *   [exposureTicks] (con un inventario abierto) o pasen [lifetimeTicks].
+ * - [clear] = true: remove every nonsense name (on level change or with "Start over").
+ * - [everything] = true (version 2): phase B of the ending, every item except diorite and the
+ *   mod's own, until a [clear].
+ * - Otherwise: show [items] with nonsense names until the player has had them on screen for
+ *   [exposureTicks] (with an inventory open) or [lifetimeTicks] have passed.
  *
- * Formato: [VERSION] y luego los campos; las versiones futuras solo añaden campos al final.
+ * Format: [VERSION] and then the fields; future versions only add fields at the end.
  */
 class NonsenseNamesPacket(
     val clear: Boolean,
@@ -28,12 +28,12 @@ class NonsenseNamesPacket(
 
     override fun write(buf: FriendlyByteBuf) {
         buf.writeVarInt(VERSION)
-        // Versión 1
+        // Version 1
         buf.writeBoolean(clear)
         buf.writeCollection(items, FriendlyByteBuf::writeResourceLocation)
         buf.writeVarInt(exposureTicks)
         buf.writeVarInt(lifetimeTicks)
-        // Versión 2
+        // Version 2
         buf.writeBoolean(everything)
     }
 
@@ -42,7 +42,7 @@ class NonsenseNamesPacket(
     companion object {
         const val VERSION = 2
 
-        /** Capacidad inicial máxima al leer: un tamaño absurdo no reserva memoria de golpe. */
+        /** Maximum initial capacity when reading: an absurd size does not reserve memory all at once. */
         private const val MAX_ITEMS = 4096
 
         val TYPE: PacketType<NonsenseNamesPacket> = PacketType.create(Dioriteisntuseless.id("nonsense_names"), ::read)

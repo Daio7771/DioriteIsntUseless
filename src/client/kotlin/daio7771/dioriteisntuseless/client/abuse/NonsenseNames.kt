@@ -17,18 +17,18 @@ import net.minecraft.world.item.ItemStack
 import java.util.Random
 
 /**
- * Nombres sin sentido del Abuse Mode, solo en este cliente (ver NonsenseNameSignal).
+ * Abuse Mode nonsense names, only on this client (see NonsenseNameSignal).
  *
- * - Solo visual: ItemStackMixin cambia lo que devuelve getHoverName en el hilo de dibujo, así
- *   que el servidor (también el integrado de un solo jugador) siempre ve el nombre de verdad.
- *   El ítem, su NBT, sus pilas y sus recetas no cambian.
- * - Nunca se le ve cambiar (regla de oro 2): los nombres solo aparecen o desaparecen cuando no hay
- *   ninguna pantalla abierta ni el nombre del ítem flotando sobre la barra rápida. Mientras tanto,
- *   cada nombre es siempre el mismo (nada de cambiar cada frame).
- * - Cada nombre se gasta mientras el jugador tiene un inventario abierto; cuando lo cierra
- *   después de verlo, el nombre vuelve a la normalidad. Si nunca lo ve, caduca en silencio.
+ * - Visual only: ItemStackMixin changes what getHoverName returns on the render thread, so the
+ *   server (also the integrated one in single player) always sees the real name. The item, its
+ *   NBT, its stacks and its recipes do not change.
+ * - It is never seen changing (golden rule 2): names only appear or disappear when no screen is
+ *   open and no item name is floating above the hotbar. Meanwhile, each name always stays the
+ *   same (no changing every frame).
+ * - Each name wears off while the player has an inventory open; when they close it after seeing
+ *   it, the name goes back to normal. If they never see it, it expires silently.
  *
- * Todo se usa desde el hilo del cliente.
+ * Everything is used from the client thread.
  */
 object NonsenseNames {
 
@@ -44,19 +44,19 @@ object NonsenseNames {
     private val active = HashMap<Item, Scramble>()
 
     /**
-     * Fase B del final: todos los ítems salvo la diorita y los del mod, hasta "Start over". Los
-     * nombres se inventan la primera vez que se muestran y ya no cambian.
+     * Phase B of the ending: every item except diorite and the mod's own, until "Start over". The
+     * names are made up the first time they are shown and do not change after that.
      */
     private var everything = false
     private val everythingNames = HashMap<Item, Component>()
     private val keepsItsName = HashMap<Item, Boolean>()
 
-    /** Paquetes recibidos que esperan a un momento tranquilo para aplicarse, en orden. */
+    /** Received packets waiting for a calm moment to be applied, in order. */
     private val pending = ArrayDeque<NonsenseNamesPacket>()
 
     private val random = Random()
 
-    /** Un error lo ha apagado hasta el próximo mundo (regla de oro 1). */
+    /** An error has turned it off until the next world (golden rule 1). */
     private var broken = false
 
     fun init() {
@@ -67,10 +67,10 @@ object NonsenseNames {
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ -> reset() }
     }
 
-    /** Lo llama ItemStackMixin con el nombre de verdad. */
+    /** Called by ItemStackMixin with the real name. */
     @JvmStatic
     fun displayName(stack: ItemStack, original: Component): Component {
-        // Solo el hilo de dibujo: el servidor integrado y cualquier otro hilo ven el nombre real.
+        // Only the render thread: the integrated server and any other thread see the real name.
         if (!RenderSystem.isOnRenderThread() || (!everything && active.isEmpty()) || stack.hasCustomHoverName()) {
             return original
         }
@@ -109,7 +109,7 @@ object NonsenseNames {
         for (id in packet.items) {
             val item = BuiltInRegistries.ITEM.getOptional(id).orElse(null) ?: continue
             if (NonsenseNameSignal.keepsItsName(item)) continue
-            // Si ya lo tenía, conserva el mismo nombre: solo se renueva el tiempo.
+            // If it already had one, it keeps the same name: only the time is renewed.
             val name = active[item]?.name ?: Component.literal(randomName())
             active[item] = Scramble(name, packet.exposureTicks, packet.lifetimeTicks)
         }

@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-Diorite Isn't Useless — generador de texturas de ítems (16x16).
+Diorite Isn't Useless — item texture generator (16x16).
 
-Cada textura es una cuadrícula de 16 filas x 16 caracteres.
-Cada carácter es un píxel; su color sale de la paleta del ítem.
-'.' = transparente.
+Each texture is a grid of 16 rows x 16 characters.
+Each character is a pixel; its color comes from the item's palette.
+'.' = transparent.
 
-Uso:
-    python generate_textures.py                 -> genera los PNG en ./out
-    python generate_textures.py --out DIR       -> genera en DIR
-    python generate_textures.py --preview DIR   -> además, previews ampliados
+Usage:
+    python generate_textures.py                 -> generates the PNGs into ./out
+    python generate_textures.py --out DIR       -> generates into DIR
+    python generate_textures.py --preview DIR   -> also enlarged previews
 
-Para retocar una textura: cambia caracteres en la cuadrícula y vuelve a ejecutar.
-Reglas de estilo:
-  - Luz desde arriba a la izquierda (H/L arriba-izquierda, D/O abajo-derecha).
-  - El contorno es el tono MÁS OSCURO del propio material, no negro puro.
-  - 4-5 tonos por material, sin degradados suaves.
+To touch up a texture: change characters in the grid and run it again.
+Style rules:
+  - Light from the top left (H/L top-left, D/O bottom-right).
+  - The outline is the DARKEST tone of the material itself, not pure black.
+  - 4-5 tones per material, no smooth gradients.
 """
 
 import argparse
@@ -25,40 +25,40 @@ from pathlib import Path
 from PIL import Image
 
 # --------------------------------------------------------------------------
-# Paletas
+# Palettes
 # --------------------------------------------------------------------------
 
-# Cristal de diorita: blanco lechoso con alma lila (pariente del lingote,
-# pero translúcido y más frío).
+# Diorite crystal: milky white with a lilac soul (a relative of the ingot,
+# but translucent and colder).
 CRYSTAL = {
-    "O": "#3E3354",  # contorno (lila muy oscuro)
-    "D": "#7A6C99",  # cara en sombra
-    "d": "#9A8DB8",  # sombra intermedia
-    "M": "#C2B9D9",  # tono medio
-    "L": "#E6E1F0",  # cara iluminada
-    "H": "#FFFFFF",  # brillo
-    "P": "#F2D7EE",  # reflejo rosado en la arista
-    "S": "#4A4458",  # mota de diorita (pocas)
+    "O": "#3E3354",  # outline (very dark lilac)
+    "D": "#7A6C99",  # shaded face
+    "d": "#9A8DB8",  # mid shadow
+    "M": "#C2B9D9",  # mid tone
+    "L": "#E6E1F0",  # lit face
+    "H": "#FFFFFF",  # highlight
+    "P": "#F2D7EE",  # pinkish glint on the edge
+    "S": "#4A4458",  # diorite speck (a few)
 }
 
-# Lingote de dioritina: diorita "fundida y compactada". Blanco grisáceo
-# con las motas negras que la delatan.
+# Dioritine ingot: "melted and compacted" diorite. Grayish white
+# with the black specks that give it away.
 INGOT = {
-    "O": "#34313B",  # contorno
-    "D": "#7D7A85",  # cara lateral (sombra)
-    "d": "#9C99A3",  # sombra suave
-    "M": "#BEBCC4",  # cara frontal
-    "L": "#E3E3E3",  # cara superior
-    "H": "#FAFAFA",  # brillo
-    "S": "#3A3A3A",  # mota oscura
-    "s": "#6E6A78",  # mota clara (sobre sombra)
-    "P": "#F5F0FF",  # destello lila
+    "O": "#34313B",  # outline
+    "D": "#7D7A85",  # side face (shadow)
+    "d": "#9C99A3",  # soft shadow
+    "M": "#BEBCC4",  # front face
+    "L": "#E3E3E3",  # top face
+    "H": "#FAFAFA",  # highlight
+    "S": "#3A3A3A",  # dark speck
+    "s": "#6E6A78",  # light speck (on shadow)
+    "P": "#F5F0FF",  # lilac sparkle
 }
 
-# Hacha de dioritina: cabeza del mismo material que el lingote,
-# mango de madera propio y una atadura oscura.
+# Dioritine axe: head made of the same material as the ingot,
+# its own wooden handle and a dark binding.
 AXE = {
-    # cabeza
+    # head
     "O": "#34313B",
     "D": "#7D7A85",
     "d": "#9C99A3",
@@ -67,18 +67,18 @@ AXE = {
     "H": "#FAFAFA",
     "S": "#3A3A3A",
     "P": "#F5F0FF",
-    # mango
-    "w": "#2A1C10",  # contorno madera
-    "b": "#5A3D22",  # madera oscura
-    "m": "#7E5832",  # madera media
-    "l": "#A27846",  # madera clara
-    # atadura (cuero/cordel)
+    # handle
+    "w": "#2A1C10",  # wood outline
+    "b": "#5A3D22",  # dark wood
+    "m": "#7E5832",  # mid wood
+    "l": "#A27846",  # light wood
+    # binding (leather/cord)
     "r": "#3B2A3F",
     "R": "#5E4566",
 }
 
 # --------------------------------------------------------------------------
-# Cuadrículas (16x16)
+# Grids (16x16)
 # --------------------------------------------------------------------------
 
 CRYSTAL_GRID = [
@@ -138,8 +138,8 @@ AXE_GRID = [
     ".wwww...........",
 ]
 
-# Pico de dioritina: los mismos materiales que el hacha. La cabeza es simétrica respecto al mango
-# (la diagonal x + y = 15); las sombras no, porque la luz viene de arriba a la izquierda.
+# Dioritine pickaxe: the same materials as the axe. The head is symmetric about the handle
+# (the diagonal x + y = 15); the shading is not, because the light comes from the top left.
 PICKAXE = AXE
 
 PICKAXE_GRID = [
@@ -180,23 +180,23 @@ def hex_to_rgba(h: str) -> tuple:
 
 def render(grid: list, palette: dict, name: str) -> Image.Image:
     if len(grid) != 16:
-        raise ValueError(f"{name}: la cuadrícula tiene {len(grid)} filas, deben ser 16")
+        raise ValueError(f"{name}: the grid has {len(grid)} rows, it must have 16")
     img = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
     px = img.load()
     for y, row in enumerate(grid):
         if len(row) != 16:
-            raise ValueError(f"{name}: la fila {y} tiene {len(row)} caracteres, deben ser 16")
+            raise ValueError(f"{name}: row {y} has {len(row)} characters, it must have 16")
         for x, ch in enumerate(row):
             if ch == ".":
                 continue
             if ch not in palette:
-                raise ValueError(f"{name}: carácter '{ch}' en ({x},{y}) no está en la paleta")
+                raise ValueError(f"{name}: character '{ch}' at ({x},{y}) is not in the palette")
             px[x, y] = hex_to_rgba(palette[ch])
     return img
 
 
 def preview(img: Image.Image, scale: int = 24) -> Image.Image:
-    """Ampliado sin suavizado sobre un tablero gris, como en un editor."""
+    """Enlarged without smoothing over a gray checkerboard, like in an editor."""
     big = img.resize((16 * scale, 16 * scale), Image.NEAREST)
     bg = Image.new("RGBA", big.size, (0, 0, 0, 255))
     bpx = bg.load()
@@ -210,8 +210,8 @@ def preview(img: Image.Image, scale: int = 24) -> Image.Image:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--out", default="out", help="carpeta de salida de los PNG 16x16")
-    ap.add_argument("--preview", default=None, help="carpeta para previews ampliados")
+    ap.add_argument("--out", default="out", help="output folder for the 16x16 PNGs")
+    ap.add_argument("--preview", default=None, help="folder for enlarged previews")
     args = ap.parse_args()
 
     out = Path(args.out)
@@ -231,7 +231,7 @@ def main() -> int:
             p = preview(img)
             p.save(pv / f"{name}_preview.png")
             tiles.append(p)
-        # hoja comparativa: las tres ampliadas + tamaño real x2 abajo
+        # comparison sheet: every texture enlarged + real size x2 below
         gap = 16
         w = sum(t.size[0] for t in tiles) + gap * (len(tiles) + 1)
         h = tiles[0].size[1] + gap * 3 + 32

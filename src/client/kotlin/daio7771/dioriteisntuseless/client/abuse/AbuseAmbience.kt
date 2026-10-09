@@ -11,43 +11,44 @@ import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
 
 /**
- * El fondo inquietante del Abuse Mode: un bucle por nivel (ModSounds.AMBIENCE), desde el nivel 1,
- * muy bajo, hasta el final. Al cambiar de nivel el bucle anterior se apaga mientras entra el nuevo,
- * y nada empieza ni acaba de golpe (regla de oro). Suena en la categoría "Ambiente": el jugador
- * puede bajarlo con su control de volumen.
+ * The unsettling Abuse Mode background: one loop per level (ModSounds.AMBIENCE), from level 1,
+ * very quiet, up to the ending. On a level change the previous loop fades out while the new one
+ * fades in, and nothing starts or stops suddenly (golden rule). It plays in the
+ * "Ambient/Environment" category: the player can turn it down with that volume slider.
  *
- * Mientras hay fondo, la música de Minecraft no suena (MusicManagerMixin): el fondo manda.
+ * While there is a background, Minecraft's music does not play (MusicManagerMixin): the
+ * background rules.
  *
- * Todo se usa desde el hilo del cliente.
+ * Everything is used from the client thread.
  */
 object AbuseAmbience {
 
-    /** Volumen de los bucles; los niveles bajos ya van más flojos en el propio archivo. */
+    /** Volume of the loops; the low levels are already quieter in the file itself. */
     private const val VOLUME = 0.6f
 
-    /** Al empezar el nivel 1 o al entrar al mundo con nivel. */
+    /** When level 1 starts or when joining the world with a level. */
     private const val FADE_IN_TICKS = 200
-    /** De un nivel al siguiente. */
+    /** From one level to the next. */
     private const val CROSSFADE_TICKS = 160
-    /** Al llegar al final: más rápido, se nota. */
+    /** On reaching the ending: faster, so it is noticed. */
     private const val FINAL_CROSSFADE_TICKS = 60
-    /** Al acabar (Start over o Abuse Mode desactivado). */
+    /** When it ends (Start over or Abuse Mode disabled). */
     private const val FADE_OUT_TICKS = 100
-    /** Si el motor de sonido corta el bucle (recarga de recursos...), espera antes de volver a ponerlo. */
+    /** If the sound engine cuts the loop (resource reload...), wait before starting it again. */
     private const val RESTART_DELAY_TICKS = 100
 
     private var current: AmbienceSound? = null
     private var currentLevel = 0
     private var restartIn = 0
 
-    /** Un error lo ha apagado hasta reiniciar el juego (regla de oro 1). */
+    /** An error has turned it off until the game restarts (golden rule 1). */
     private var failed = false
 
     fun init() {
         ClientTickEvents.END_CLIENT_TICK.register(::tick)
     }
 
-    /** Para MusicManagerMixin: hay (o va a haber) fondo, así que la música no suena. */
+    /** For MusicManagerMixin: there is (or is about to be) a background, so the music does not play. */
     @JvmStatic
     fun blocksMusic(): Boolean = !failed && targetLevel(Minecraft.getInstance()) > 0
 
@@ -60,7 +61,7 @@ object AbuseAmbience {
         if (failed) return
         try {
             if (client.level == null) {
-                // Fuera del mundo: Minecraft ya ha parado todos los sonidos al salir.
+                // Out of the world: Minecraft already stopped every sound on leaving.
                 current = null
                 currentLevel = 0
                 restartIn = 0
@@ -75,7 +76,7 @@ object AbuseAmbience {
             if (target != currentLevel) {
                 switchTo(client, target)
             } else if (sound != null && !client.soundManager.isActive(sound)) {
-                // El motor de sonido lo ha cortado: vuelve a entrar despacio, pasado un rato.
+                // The sound engine cut it: it fades back in slowly, after a while.
                 current = null
                 currentLevel = 0
                 restartIn = RESTART_DELAY_TICKS
@@ -106,8 +107,8 @@ object AbuseAmbience {
     }
 
     /**
-     * Un bucle sin posición (se oye igual en todas partes, en estéreo) cuyo volumen sube al empezar
-     * y, cuando se le pide, baja hasta pararse. El motor de sonido le llama cada tick.
+     * A loop with no position (it sounds the same everywhere, in stereo) whose volume rises when it
+     * starts and, when asked, falls until it stops. The sound engine calls it every tick.
      */
     private class AmbienceSound(event: SoundEvent, private val fadeInTicks: Int) :
         AbstractTickableSoundInstance(event, SoundSource.AMBIENT, SoundInstance.createUnseededRandom()) {
@@ -125,7 +126,7 @@ object AbuseAmbience {
             volume = 0f
         }
 
-        /** Empieza a volumen 0 (si no, el motor no lo pondría). */
+        /** Starts at volume 0 (otherwise the engine would not play it). */
         override fun canStartSilent(): Boolean = true
 
         fun fadeOut(ticks: Int) {
@@ -149,7 +150,7 @@ object AbuseAmbience {
             }
         }
 
-        /** Curva suave de 0 a 1, sin arranques ni paradas bruscas. */
+        /** Smooth curve from 0 to 1, with no abrupt start or stop. */
         private fun smooth(x: Float): Float = x * x * (3 - 2 * x)
     }
 }

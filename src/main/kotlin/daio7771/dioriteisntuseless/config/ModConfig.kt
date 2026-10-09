@@ -21,12 +21,11 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * Lee, valida y guarda config/dioriteisntuseless.json, y guarda la configuración en vigor.
+ * Reads, validates and saves config/dioriteisntuseless.json, and holds the config in effect.
  *
- * Nada de lo que haya en el archivo puede tumbar el juego: cualquier problema se registra en el
- * log y se sigue con valores válidos. Las operaciones con el archivo van sincronizadas porque en
- * un solo jugador pueden coincidir la pantalla de configuración (hilo del cliente) y /diu reload
- * (hilo del servidor integrado).
+ * Nothing in the file can crash the game: any problem is logged and valid values are used instead.
+ * File operations are synchronized because in single player the config screen (client thread) and
+ * /diu reload (integrated server thread) can run at the same time.
  */
 object ModConfig {
 
@@ -36,37 +35,37 @@ object ModConfig {
     private val path: Path = FabricLoader.getInstance().configDir.resolve("${Dioriteisntuseless.MOD_ID}.json")
 
     /**
-     * Configuración en vigor. Se lee sin bloqueos desde cualquier hilo; como es inmutable y se
-     * sustituye entera, cada lectura ve un estado coherente. Si se van a usar varios valores
-     * juntos, leer el campo una vez y usar esa instancia.
+     * Config in effect. Read without locks from any thread; since it is immutable and replaced as
+     * a whole, every read sees a consistent state. If several values are going to be used
+     * together, read the field once and use that instance.
      */
     @Volatile
     var current: DiuConfig = DiuConfig()
         private set
 
     /**
-     * Durabilidad con la que se registró el hacha. No cambia hasta reiniciar, aunque cambie
-     * axe.durability en el archivo.
+     * Durability the axe was registered with. It does not change until a restart, even if
+     * axe.durability changes in the file.
      */
     var axeDurabilityAtStartup: Int = DiuConfig().axe.durability
         private set
 
     sealed interface ReloadResult {
         /**
-         * @param corrections valores ajustados o sustituidos (los detalles están en el log).
-         * @param restartPendingDurability la nueva axe.durability si es distinta de la que está
-         *   en vigor, o null.
+         * @param corrections values adjusted or replaced (the details are in the log).
+         * @param restartPendingDurability the new axe.durability if it differs from the one in
+         *   effect, or null.
          */
         data class Success(val corrections: Int, val restartPendingDurability: Int?) : ReloadResult
 
-        /** El JSON no se puede leer. No se ha tocado nada: siguen los valores anteriores. */
+        /** The JSON cannot be read. Nothing was touched: the previous values are still in use. */
         data object InvalidJson : ReloadResult
 
-        /** Error al leer el archivo (permisos, etc.). Siguen los valores anteriores. */
+        /** Error reading the file (permissions, etc.). The previous values are still in use. */
         data object ReadError : ReloadResult
     }
 
-    /** Llamar al principio de onInitialize, antes de registrar el hacha. */
+    /** Call at the start of onInitialize, before the axe is registered. */
     @Synchronized
     fun loadAtStartup() {
         val config = try {
@@ -79,7 +78,7 @@ object ModConfig {
         apply(config)
     }
 
-    /** Para /diu reload. Si el archivo no se puede leer, no cambia nada. */
+    /** For /diu reload. If the file cannot be read, nothing changes. */
     @Synchronized
     fun reload(): ReloadResult = try {
         when (val file = readFile()) {
@@ -111,8 +110,8 @@ object ModConfig {
     }
 
     /**
-     * Guarda [config] (desde la pantalla de configuración) y lo aplica. Conserva las claves que no
-     * son del mod. Si el archivo estaba roto, se aparta como .broken para no perder lo que hubiera.
+     * Saves [config] (from the config screen) and applies it. Keeps the keys that do not belong to
+     * the mod. If the file was broken, it is moved aside as .broken so nothing in it is lost.
      */
     @Synchronized
     fun save(config: DiuConfig) {
@@ -122,7 +121,7 @@ object ModConfig {
                 is FileState.Corrupt -> {
                     LOGGER.error("Config file {} is not valid JSON ({}); replacing it with the values from the config screen.",
                         path, file.detail)
-                    // Si no se puede apartar, no se escribe encima: los cambios valen solo para esta sesión.
+                    // If it cannot be moved aside, it is not overwritten: the changes only last this session.
                     if (moveAsideBroken()) JsonObject() else null
                 }
                 else -> JsonObject()
@@ -148,7 +147,7 @@ object ModConfig {
             DiuConfig().also { write(ConfigCodec.encode(it, JsonObject())) }
         }
         is FileState.Unreadable -> {
-            // No se sobrescribe: el archivo puede estar bien y ser un problema de permisos.
+            // Not overwritten: the file may be fine and the problem may be permissions.
             LOGGER.error("Could not read {}; using the default values. The file was left untouched.", path, file.error)
             DiuConfig()
         }
@@ -165,7 +164,7 @@ object ModConfig {
         is FileState.Parsed -> decode(file.root).config
     }
 
-    /** Valida el árbol y, si le faltaban claves, reescribe el archivo con ellas. */
+    /** Validates the tree and, if keys were missing, rewrites the file with them. */
     private fun decode(root: JsonObject): ConfigCodec.Decoded {
         val decoded = ConfigCodec.decode(root)
         if (decoded.corrections > 0) {
@@ -192,7 +191,7 @@ object ModConfig {
             return FileState.Unreadable(e)
         }
         val root = try {
-            // Modo permisivo de Gson: admite comentarios y claves sin comillas.
+            // Gson's lenient mode: accepts comments and unquoted keys.
             JsonParser.parseString(text)
         } catch (e: JsonParseException) {
             return FileState.Corrupt(rootMessage(e))
@@ -201,17 +200,17 @@ object ModConfig {
         return FileState.Parsed(root.asJsonObject)
     }
 
-    /** El mensaje útil de Gson ("Unterminated object at line 5 column 3 path $.diorite"). */
+    /** Gson's useful message ("Unterminated object at line 5 column 3 path $.diorite"). */
     private fun rootMessage(e: Throwable): String {
         val root = generateSequence(e) { it.cause }.last()
-        // Este consejo es para programadores; al jugador le basta con saber dónde está el error.
+        // That advice is for programmers; the player only needs to know where the error is.
         return (root.message ?: root.toString())
             .replace("Use JsonReader.setLenient(true) to accept malformed JSON", "Malformed JSON")
     }
 
     /**
-     * Renombra el archivo roto a dioriteisntuseless.json.broken-<fecha> para no perderlo.
-     * Devuelve false si no se ha podido (y entonces no hay que escribir encima).
+     * Renames the broken file to dioriteisntuseless.json.broken-<date> so it is not lost.
+     * Returns false if that failed (and then it must not be overwritten).
      */
     private fun moveAsideBroken(): Boolean {
         val base = "${path.fileName}.broken-${LocalDateTime.now().format(BROKEN_SUFFIX_FORMAT)}"
@@ -229,9 +228,9 @@ object ModConfig {
     }
 
     /**
-     * Escribe primero un archivo temporal y luego lo pone en el sitio del bueno, para que un
-     * cierre a mitad de escritura nunca deje un JSON a medias. Si falla, solo lo registra: la
-     * configuración en memoria sigue siendo válida.
+     * Writes a temporary file first and then moves it into place, so closing the game halfway
+     * through never leaves a half-written JSON. If it fails, it is only logged: the config in
+     * memory is still valid.
      */
     private fun write(root: JsonObject) {
         var temp: Path? = null

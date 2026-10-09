@@ -14,28 +14,28 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.state.BlockState
 
 /**
- * Hacha de dioritina: muy buena con la madera e inútil para todo lo demás.
- * Hereda de AxeItem, así que conserva el comportamiento vanilla de hacha (quitar corteza,
- * raspar cobre, quitar cera, desactivar escudos). La tala la hace TreeFeller.
+ * Dioritine axe: great with wood and useless for everything else.
+ * It extends AxeItem, so it keeps the vanilla axe behavior (stripping bark, scraping copper,
+ * removing wax, disabling shields). The felling is done by TreeFeller.
  */
 class DioritineAxeItem(properties: Item.Properties) :
     AxeItem(DioritineTier, ATTACK_DAMAGE_MODIFIER, ATTACK_SPEED_MODIFIER, properties) {
 
-    /** Velocidad del tier en troncos (tag minecraft:logs); en cualquier otro bloque, la mitad que a mano. */
+    /** Tier speed on logs (tag minecraft:logs); on any other block, half the speed of a bare hand. */
     override fun getDestroySpeed(stack: ItemStack, state: BlockState): Float =
         if (state.`is`(BlockTags.LOGS)) speed else NON_WOOD_SPEED
 
     /**
-     * Los troncos no gastan aquí: los cobra TreeFeller en cuanto se rompen (también el que golpea
-     * el jugador), antes de que vanilla llame a este método. Así la configuración se lee en un
-     * solo sitio. El resto de bloques gasta 1, como cualquier herramienta.
+     * Logs do not use durability here: TreeFeller charges them as soon as they break (the one the
+     * player hits too), before vanilla calls this method. That way the config is read in a single
+     * place. Every other block uses 1, like any tool.
      */
     override fun mineBlock(stack: ItemStack, level: Level, state: BlockState, pos: BlockPos, miner: LivingEntity): Boolean {
         if (state.`is`(BlockTags.LOGS)) return true
         return super.mineBlock(stack, level, state, pos, miner)
     }
 
-    // La barra muestra lo que esté más cerca de romper el hacha: la durabilidad o los árboles.
+    // The bar shows whatever is closer to breaking the axe: the durability or the trees.
 
     override fun isBarVisible(stack: ItemStack): Boolean = stack.isDamaged || remainingTreesFraction(stack) < 1f
 
@@ -48,28 +48,28 @@ class DioritineAxeItem(properties: Item.Properties) :
     private fun remainingTreesFraction(stack: ItemStack): Float = ToolWear.remainingUses(felledTrees(stack), treesBeforeBreaking())
 
     companion object {
-        // Se suman a los valores base del jugador: 1.0 de daño y 4.0 de velocidad de ataque.
-        private const val ATTACK_DAMAGE_MODIFIER = -0.5f  // daño total 0.5
-        private const val ATTACK_SPEED_MODIFIER = -3.0f   // velocidad total 1.0
+        // Added to the player's base values: 1.0 damage and 4.0 attack speed.
+        private const val ATTACK_DAMAGE_MODIFIER = -0.5f  // total damage 0.5
+        private const val ATTACK_SPEED_MODIFIER = -3.0f   // total speed 1.0
 
         private const val NON_WOOD_SPEED = 0.5f
 
         /**
-         * Troncos rotos que aún no han gastado durabilidad, en el NBT del hacha.
-         * (Con logsPerDurabilityPoint = 2 equivale a los "medios puntos" de antes.)
+         * Broken logs that have not used durability yet, in the axe's NBT.
+         * (With logsPerDurabilityPoint = 2 this is the same as the old "half points".)
          */
         private const val WEAR_TAG = "DioritineWear"
 
         /**
-         * Cobra un tronco roto: cada [logsPerDurabilityPoint] troncos, 1 punto real de daño.
-         * Es exacto y determinista: la cuenta se guarda en el NBT. Con 1 cobra 1 por tronco,
-         * como un hacha normal. En creativo no se gasta nada. Si el hacha se rompe, la pila
-         * queda vacía.
+         * Charges one broken log: every [logsPerDurabilityPoint] logs, 1 real point of damage.
+         * It is exact and deterministic: the count is kept in the NBT. With 1 it charges 1 per
+         * log, like a normal axe. Nothing is used in creative. If the axe breaks, the stack ends
+         * up empty.
          */
         fun addLogWear(stack: ItemStack, player: Player, logsPerDurabilityPoint: Int) {
             if (player.abilities.instabuild || stack.isEmpty) return
             val wear = (stack.tag?.getInt(WEAR_TAG) ?: 0) + 1
-            // Si se ha bajado logsPerDurabilityPoint, la cuenta guardada puede pasarse: también cobra.
+            // If logsPerDurabilityPoint was lowered, the saved count may be over it: that charges too.
             if (wear < logsPerDurabilityPoint) {
                 stack.orCreateTag.putInt(WEAR_TAG, wear)
                 return
@@ -78,13 +78,13 @@ class DioritineAxeItem(properties: Item.Properties) :
             stack.hurtAndBreak(1, player) { it.broadcastBreakEvent(EquipmentSlot.MAINHAND) }
         }
 
-        /** Árboles enteros talados desde que se hizo o se reparó en el yunque con lingotes, en el NBT del hacha. */
+        /** Whole trees felled since it was made or repaired on an anvil with ingots, in the axe's NBT. */
         private const val TREES_TAG = "DioritineTrees"
 
         /**
-         * treeFelling.treesBeforeBreaking del servidor remoto al que está conectado este cliente, o
-         * null (servidor dedicado, un solo jugador o sin conectar: vale la configuración local).
-         * Solo lo usa la barra; la rotura la decide siempre el servidor con su configuración.
+         * treeFelling.treesBeforeBreaking of the remote server this client is connected to, or
+         * null (dedicated server, single player or not connected: the local config applies).
+         * Only the bar uses it; breaking is always decided by the server with its own config.
          */
         @Volatile
         var serverTreesBeforeBreaking: Int? = null
@@ -94,20 +94,20 @@ class DioritineAxeItem(properties: Item.Properties) :
 
         fun felledTrees(stack: ItemStack): Int = stack.tag?.getInt(TREES_TAG) ?: 0
 
-        /** true si [stack] es un hacha de dioritina con árboles talados en la cuenta. */
+        /** true if [stack] is a dioritine axe with felled trees on its count. */
         @JvmStatic
         fun hasFelledTrees(stack: ItemStack): Boolean = stack.`is`(ModItems.DIORITINE_AXE) && felledTrees(stack) > 0
 
-        /** Para el yunque: reparar con lingotes reinicia la cuenta. A otros ítems no les hace nada. */
+        /** For the anvil: repairing with ingots resets the count. Does nothing to other items. */
         @JvmStatic
         fun resetFelledTrees(stack: ItemStack) {
             if (stack.`is`(ModItems.DIORITINE_AXE)) stack.removeTagKey(TREES_TAG)
         }
 
         /**
-         * Cuenta un árbol entero talado. Al llegar a [treesBeforeBreaking] el hacha se rompe,
-         * le quede la durabilidad que le quede (y aunque tenga Unbreaking). 0 = sin límite.
-         * En creativo no cuenta.
+         * Counts one whole tree felled. On reaching [treesBeforeBreaking] the axe breaks, whatever
+         * durability it has left (even with Unbreaking). 0 = no limit.
+         * Does not count in creative.
          */
         fun addFelledTree(stack: ItemStack, player: Player, treesBeforeBreaking: Int) {
             if (player.abilities.instabuild || stack.isEmpty || treesBeforeBreaking <= 0) return

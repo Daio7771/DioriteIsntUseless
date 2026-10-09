@@ -12,9 +12,9 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Mesa de encantar: getAvailableEnchantmentResults es la lista de la que la mesa elige sus
- * ofertas (filtra por categoría, no por Enchantment.canEnchant). Para el Dioritine Axe se dejan
- * solo los permitidos; como Mending es un tesoro y la mesa nunca lo ofrece, queda Efficiency.
+ * Enchanting table: getAvailableEnchantmentResults is the list the table picks its offers from (it
+ * filters by category, not by Enchantment.canEnchant). For the dioritine tools only the allowed
+ * ones are kept; since Mending is a treasure and the table never offers it, Efficiency remains.
  */
 @Mixin(EnchantmentHelper.class)
 public abstract class EnchantmentHelperMixin {

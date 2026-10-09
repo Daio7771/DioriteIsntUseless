@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory
 class Dioriteisntuseless : ModInitializer {
 
     override fun onInitialize() {
-        // Lo primero: la durabilidad del hacha y del pico sale de la configuración al registrarlos.
+        // First of all: the durability of the axe and the pickaxe comes from the config when they are registered.
         ModConfig.loadAtStartup()
         ModItems.init()
         ModSounds.init()
@@ -30,7 +30,7 @@ class Dioriteisntuseless : ModInitializer {
     }
 
     companion object {
-        /** Debe coincidir con el "id" de fabric.mod.json. */
+        /** Must match the "id" in fabric.mod.json. */
         const val MOD_ID = "dioriteisntuseless"
 
         val LOGGER: Logger = LoggerFactory.getLogger("DioriteIsntUseless")

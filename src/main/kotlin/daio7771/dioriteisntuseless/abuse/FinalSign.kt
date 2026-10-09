@@ -11,17 +11,17 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
 
 /**
- * EL cartel (nivel 4, HORROR_DESIGN.md apartado 4.5): "Don't abuse / diorite. / Delete this mod /
- * immediately." (textos en en_us.json).
+ * THE sign (level 4, HORROR_DESIGN.md section 4.5): "Don't abuse / diorite. / Delete this mod /
+ * immediately." (texts in en_us.json).
  *
- * Aparece una vez al llegar al nivel 4, cerca del jugador y a la altura de sus ojos (colgado de
- * una pared o, si no hay, de pie en el suelo), con el frente hacia él y sin nada en medio: lo
- * verá en cuanto se gire o se mueva. Pero nunca delante de sus ojos (ni a la vista de nadie):
- * tiene que encontrarlo. Si ahora no hay sitio, se reintenta cada pocos segundos.
+ * It appears once on reaching level 4, near the player and at eye level (hanging on a wall or, if
+ * there is none, standing on the ground), facing them and with nothing in between: they will see
+ * it as soon as they turn or move. But never right in front of their eyes (nor in anyone's sight):
+ * they have to find it. If there is no room right now, it retries every few seconds.
  */
 object FinalSign {
 
-    /** Cada cuánto (en ticks jugados) se intenta mientras no haya aparecido. */
+    /** How often (in ticks played) it is attempted while it has not appeared. */
     private const val RETRY_INTERVAL = 100L
     private val HORIZONTAL_DISTANCE = 3..7
 
@@ -42,12 +42,12 @@ object FinalSign {
             val distance = Math.sqrt((dx * dx + dz * dz).toDouble())
             if (distance >= HORIZONTAL_DISTANCE.first && distance <= max) candidates += feet.offset(dx, 0, dz)
         }
-        // Fisher-Yates con el azar del jugador.
+        // Fisher-Yates with the player's randomness.
         for (i in candidates.lastIndex downTo 1) {
             val j = player.random.nextInt(i + 1)
             candidates[i] = candidates[j].also { candidates[j] = candidates[i] }
         }
-        // Primero colgado a la altura de los ojos; si no hay ningún sitio, de pie en el suelo.
+        // First hanging at eye level; if there is no spot at all, standing on the ground.
         for (column in candidates) {
             val pos = column.above()
             val sign = wallSignFacing(player, pos) ?: continue
@@ -60,18 +60,18 @@ object FinalSign {
         return false
     }
 
-    /** Un cartel en [pos] colgado de una pared y con el frente hacia el jugador, o null. */
+    /** A sign at [pos] hanging on a wall and facing the player, or null. */
     private fun wallSignFacing(player: ServerPlayer, pos: BlockPos): BlockState? {
         val toPlayer = player.position().subtract(Vec3.atCenterOf(pos))
         for (front in Direction.Plane.HORIZONTAL) {
-            // El jugador tiene que estar claramente delante del cartel, no de lado.
+            // The player has to be clearly in front of the sign, not to the side.
             if (toPlayer.dot(Vec3.atLowerCornerOf(front.normal)) < 1.5) continue
             AbuseSigns.onWall(player.serverLevel(), pos, front)?.let { return it }
         }
         return null
     }
 
-    /** Lo verá al girarse (sin nada en medio) pero ahora no lo ve nadie; y se puede construir ahí. */
+    /** They will see it when turning (nothing in between) but nobody sees it now; and building there is allowed. */
     private fun isGoodSpot(player: ServerPlayer, pos: BlockPos): Boolean {
         val level = player.serverLevel()
         return Visibility.inLineOfSight(level, player, pos) &&

@@ -10,8 +10,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * /enchant sigue el mismo filtro: un encantamiento no permitido en el Dioritine Axe da el error
- * vanilla de "no admite ese encantamiento".
+ * /enchant follows the same filter: an enchantment that is not allowed on a dioritine tool gives
+ * the vanilla "cannot support that enchantment" error.
  */
 @Mixin(EnchantCommand.class)
 public abstract class EnchantCommandMixin {

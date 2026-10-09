@@ -9,8 +9,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Todas las estadísticas de un jugador pasan por aquí. WornOutAdvancements se queda con las de
- * "hacha o pico de dioritina roto" para dar sus logros; las estadísticas vanilla no se tocan.
+ * Every statistic of a player goes through here. WornOutAdvancements picks the "dioritine axe or
+ * pickaxe broken" ones to grant its advancements; vanilla statistics are not touched.
  */
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerMixin {

@@ -10,19 +10,19 @@ import net.minecraft.stats.Stats
 import net.minecraft.world.item.Item
 
 /**
- * Logros de gastar una herramienta de dioritina hasta romperla, la primera vez:
- * - "Diorite Isn't Useless!" (advancements/wear_out_axe.json): el hacha. El mod le felicita; es
- *   lo primero que hace por su cuenta, y no tiene nada de raro.
- * - "Rock Solid Choice" (advancements/wear_out_pickaxe.json): el pico. Cuelga del anterior, pero
- *   se puede conseguir sin él.
+ * Advancements for wearing out a dioritine tool until it breaks, the first time:
+ * - "Diorite Isn't Useless!" (advancements/wear_out_axe.json): the axe. The mod congratulates the
+ *   player; it is the first thing it does on its own, and there is nothing odd about it.
+ * - "Rock Solid Choice" (advancements/wear_out_pickaxe.json): the pickaxe. It hangs from the
+ *   previous one, but can be earned without it.
  *
- * Se detectan con la estadística "objeto roto", que cubre todas las formas de romperlas (por
- * durabilidad o por llegar al límite de árboles o de picadas). El criterio de los logros es
- * "minecraft:impossible": solo los concede este código. "Start over" no los quita.
+ * They are detected through the "item broken" statistic, which covers every way of breaking them
+ * (by durability or by reaching the limit of trees or strikes). The advancements' criterion is
+ * "minecraft:impossible": only this code grants them. "Start over" does not take them away.
  */
 object WornOutAdvancements {
 
-    /** Un logro y su único criterio (el nombre del criterio va en el progreso guardado: no cambiarlo). */
+    /** An advancement and its only criterion (the criterion name is in saved progress: do not change it). */
     private class WornOut(val id: ResourceLocation, val criterion: String)
 
     private val ADVANCEMENTS: Map<Item, WornOut> by lazy {
@@ -32,17 +32,17 @@ object WornOutAdvancements {
         )
     }
 
-    /** Lo llama ServerPlayerMixin con cada estadística que recibe el jugador. */
+    /** Called by ServerPlayerMixin with every statistic the player is awarded. */
     @JvmStatic
     fun onStatAwarded(player: ServerPlayer, stat: Stat<*>) {
         if (stat.type != Stats.ITEM_BROKEN) return
         val wornOut = (stat.value as? Item)?.let(ADVANCEMENTS::get) ?: return
         try {
-            // Null si un datapack lo ha quitado. Si ya lo tiene, award no hace nada.
+            // Null if a datapack removed it. If they already have it, award does nothing.
             val advancement = player.server.advancements.getAdvancement(wornOut.id) ?: return
             player.advancements.award(advancement, wornOut.criterion)
         } catch (e: Exception) {
-            // Sin logro antes que sin juego: esto se llama desde dentro de vanilla.
+            // Better no advancement than no game: this is called from inside vanilla.
             LOGGER.error("Could not award the {} advancement.", wornOut.id, e)
         }
     }

@@ -7,16 +7,16 @@ import net.minecraft.server.level.ServerPlayer
 import java.util.UUID
 
 /**
- * "Start over" (HORROR_DESIGN.md, apartado 7): vuelta a empezar sin consecuencias.
+ * "Start over" (HORROR_DESIGN.md, section 7): starting again with no consequences.
  *
- * 1. Devuelve lo que se le quitó en la fase A (si no cabe, a sus pies). Sin conectar, al entrar.
- * 2. Deshace sus cambios en el mundo (WorldChanges), respetando lo que haya cambiado él.
- * 3. La diorita vuelve a ser útil para él.
- * 4. Quita los efectos visuales (nombres sin sentido, pitidos).
- * 5. Nivel, contadores y tiempo a 0: el ciclo puede volver a empezar.
+ * 1. Gives back what phase A took (if it does not fit, at their feet). If offline, on join.
+ * 2. Undoes their changes to the world (WorldChanges), respecting whatever they changed themselves.
+ * 3. Diorite is useful again for them.
+ * 4. Removes the visual effects (nonsense names, beeps).
+ * 5. Level, counters and time back to 0: the cycle can start again.
  *
- * Funciona aunque el Abuse Mode esté desactivado (es la forma de deshacer) y aunque el jugador se
- * desconecte o el servidor se reinicie entre medias: lo pendiente está guardado con el mundo.
+ * It works even if the Abuse Mode is disabled (it is the way to undo things) and even if the player
+ * disconnects or the server restarts in between: whatever is pending is saved with the world.
  */
 object StartOver {
 
@@ -37,7 +37,7 @@ object StartOver {
         data.setDirty()
     }
 
-    /** Al entrar un jugador: si hubo "Start over" sin él, se le devuelve lo suyo. */
+    /** When a player joins: if "Start over" happened without them, their things are given back. */
     fun onJoin(player: ServerPlayer) {
         val data = AbuseData.get(player.server)
         val state = data.getIfPresent(player.uuid) ?: return
@@ -47,13 +47,13 @@ object StartOver {
     }
 
     private fun returnItems(player: ServerPlayer, state: PlayerAbuse) {
-        // Se vacía la lista antes de dar nada: si algo fallara a medias, mejor perder un ítem
-        // que duplicarlo al reintentar.
+        // The list is emptied before giving anything: if something failed halfway, better to lose
+        // an item than to duplicate it when retrying.
         val items = state.takenItems.toList()
         state.takenItems.clear()
         state.returnItemsOnJoin = false
         for (stack in items) {
-            player.inventory.placeItemBackInInventory(stack)  // lo que no cabe, al suelo a sus pies
+            player.inventory.placeItemBackInInventory(stack)  // whatever does not fit drops at their feet
         }
     }
 }

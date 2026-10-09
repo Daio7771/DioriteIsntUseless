@@ -9,19 +9,19 @@ import net.minecraft.network.chat.Component
 import net.minecraft.util.Mth
 
 /**
- * Créditos del final del Abuse Mode (HORROR_DESIGN.md, apartado 5.3).
+ * Credits of the Abuse Mode ending (HORROR_DESIGN.md, section 5.3).
  *
- * Regla de oro 2: nada aparece de golpe. El fondo se oscurece poco a poco sobre el juego (sin
- * salto de brillo) y se queda quieto; cada línea aparece con un fundido largo; al final, el botón
- * "Start over". Hasta que el botón está del todo, Escape no hace nada. Pausa el juego en un solo
- * jugador.
+ * Golden rule 2: nothing appears suddenly. The background darkens little by little over the game
+ * (with no jump in brightness) and then stays still; each line appears with a long fade; at the
+ * end, the "Start over" button. Until the button is fully there, Escape does nothing. Pauses the
+ * game in single player.
  *
- * @param next la pantalla que iba a abrirse (pausa o cama), a la que se vuelve si se cierra con
- *   Escape sin empezar de nuevo; null si se han abierto solos (se vuelve al juego).
+ * @param next the screen that was about to open (pause or bed), which it goes back to if closed
+ *   with Escape without starting over; null if they opened on their own (back to the game).
  */
 class CreditsScreen(private val next: Screen?) : Screen(Component.translatable("$LANG.3")) {
 
-    /** null = línea en blanco. */
+    /** null = blank line. */
     private val lines: List<Component?> = listOf(line(1), line(2), null, line(3), line(4), line(5), null, line(6))
     private val textLineCount = lines.count { it != null }
 
@@ -43,7 +43,7 @@ class CreditsScreen(private val next: Screen?) : Screen(Component.translatable("
 
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         val elapsed = elapsed()
-        // Fondo: de transparente a casi negro, despacio; luego, quieto.
+        // Background: from transparent to almost black, slowly; then, still.
         val background = fade(elapsed, 0L, BACKGROUND_FADE_MS)
         graphics.fill(0, 0, width, height, argb(background, 0x080808))
 
@@ -52,7 +52,7 @@ class CreditsScreen(private val next: Screen?) : Screen(Component.translatable("
             if (line == null) return@forEachIndexed
             val alpha = fade(elapsed, FIRST_LINE_MS + textIndex * LINE_STAGGER_MS, LINE_FADE_MS)
             textIndex++
-            // Con alfa casi 0 el texto se pintaría opaco (así funciona Font): mejor no pintarlo.
+            // With an alpha close to 0 the text would be drawn opaque (that is how Font works): better not to draw it.
             if (alpha * 255 >= MIN_TEXT_ALPHA) {
                 graphics.drawCenteredString(font, line, width / 2, top + i * LINE_HEIGHT, argb(alpha, TEXT_COLOR))
             }
@@ -61,7 +61,7 @@ class CreditsScreen(private val next: Screen?) : Screen(Component.translatable("
         super.render(graphics, mouseX, mouseY, partialTick)
     }
 
-    /** El botón aparece con un fundido cuando ya están todas las líneas, y solo entonces funciona. */
+    /** The button fades in once every line is there, and only then does it work. */
     private fun updateButton() {
         val button = button ?: return
         val alpha = fade(elapsed(), buttonAt(), BUTTON_FADE_MS)
@@ -98,7 +98,7 @@ class CreditsScreen(private val next: Screen?) : Screen(Component.translatable("
         const val TEXT_COLOR = 0xD8D8D8
         const val MIN_TEXT_ALPHA = 5f
 
-        // Tiempos (ms): todo lento y suave.
+        // Timings (ms): everything slow and smooth.
         const val BACKGROUND_FADE_MS = 3_000L
         const val FIRST_LINE_MS = 2_500L
         const val LINE_STAGGER_MS = 2_000L
@@ -108,7 +108,7 @@ class CreditsScreen(private val next: Screen?) : Screen(Component.translatable("
 
         fun line(n: Int): Component = Component.translatable("$LANG.$n")
 
-        /** De 0 a 1 entre [start] y [start] + [duration], con entrada y salida suaves. */
+        /** From 0 to 1 between [start] and [start] + [duration], easing in and out. */
         fun fade(elapsed: Long, start: Long, duration: Long): Float {
             val x = Mth.clamp((elapsed - start).toFloat() / duration, 0f, 1f)
             return x * x * (3 - 2 * x)

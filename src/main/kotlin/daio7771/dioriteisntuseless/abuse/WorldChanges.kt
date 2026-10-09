@@ -21,26 +21,26 @@ import net.minecraft.world.level.saveddata.SavedData
 import java.util.UUID
 
 /**
- * Registro de todo lo que el Abuse Mode cambia en el mundo (regla de oro 4), para deshacerlo con
- * "Start over". Se guarda con el mundo (data/dioriteisntuseless_world_changes.dat del Overworld).
+ * Record of everything the Abuse Mode changes in the world (golden rule 4), so "Start over" can
+ * undo it. Saved with the world (data/dioriteisntuseless_world_changes.dat in the Overworld).
  *
- * Todo cambio pasa por [change], que coloca el bloque y lo apunta a la vez: no hay forma de
- * cambiar el mundo sin dejarlo registrado. Cambios y restauraciones se hacen sin avisar a los
- * vecinos (ver [SILENT]). Al deshacer, cada bloque vuelve a ser el original solo
- * si todavía es el que puso el mod; si el jugador lo cambió después, se respeta su cambio. Los
- * bloques en chunks sin cargar se restauran cuando se cargan (también tras reiniciar).
+ * Every change goes through [change], which places the block and records it at the same time:
+ * there is no way to change the world without it being recorded. Changes and restorations are
+ * done without notifying neighbors (see [SILENT]). When undoing, each block goes back to the
+ * original only if it is still the one the mod placed; if the player changed it afterwards, their
+ * change is respected. Blocks in unloaded chunks are restored when they load (also after a restart).
  *
- * Solo se usa desde el hilo del servidor.
+ * Only used from the server thread.
  */
 class WorldChanges private constructor() : SavedData() {
 
     private class Change(
         val owner: UUID,
-        /** Lo que había antes del primer cambio del mod en esta posición. */
+        /** What was there before the mod's first change at this position. */
         val original: BlockState,
-        /** Lo que puso el mod la última vez. */
+        /** What the mod placed last time. */
         var placed: BlockState,
-        /** "Start over" pedido: restaurar en cuanto el chunk esté cargado. */
+        /** "Start over" requested: restore as soon as the chunk is loaded. */
         var restoring: Boolean = false,
     )
 
@@ -73,13 +73,13 @@ class WorldChanges private constructor() : SavedData() {
         private val NAME = "${Dioriteisntuseless.MOD_ID}_world_changes"
         private const val DATA_VERSION = 1
 
-        /** Cada cuánto se reintentan las restauraciones pendientes. */
+        /** How often pending restorations are retried. */
         private const val RESTORE_INTERVAL = 20
 
         /**
-         * Se manda a los clientes, pero sin avisar a los bloques vecinos: un observador pegado a
-         * un bloque que cambia no da pulso y ninguna máquina de redstone se dispara. No hace falta
-         * avisarlos: el mod solo cambia un bloque sólido por otro sólido, o aire por un cartel.
+         * Sent to clients, but without notifying neighboring blocks: an observer next to a block
+         * that changes does not pulse and no redstone machine fires. There is no need to notify
+         * them: the mod only swaps a solid block for another solid one, or air for a sign.
          */
         private const val SILENT = Block.UPDATE_CLIENTS or Block.UPDATE_KNOWN_SHAPE
 
@@ -87,9 +87,9 @@ class WorldChanges private constructor() : SavedData() {
             server.overworld().dataStorage.computeIfAbsent(::load, ::WorldChanges, NAME)
 
         /**
-         * Pone [state] en [pos] y lo apunta como cambio de [owner]. Devuelve false (sin tocar
-         * nada) si esa posición ya la cambió el mod para otro jugador: así cada "Start over"
-         * deshace solo lo suyo y nunca pisa lo de otro.
+         * Places [state] at [pos] and records it as a change by [owner]. Returns false (touching
+         * nothing) if the mod already changed that position for another player: that way each
+         * "Start over" only undoes its own changes and never steps on someone else's.
          */
         fun change(level: ServerLevel, pos: BlockPos, state: BlockState, owner: UUID): Boolean {
             val data = get(level.server)
@@ -102,7 +102,7 @@ class WorldChanges private constructor() : SavedData() {
             if (existing == null) {
                 byPos[key] = Change(owner, current, state)
             } else {
-                // Segundo cambio en el mismo sitio: el original sigue siendo el de antes del primero.
+                // Second change at the same spot: the original is still the one from before the first.
                 existing.placed = state
                 if (existing.restoring) {
                     existing.restoring = false
@@ -113,7 +113,7 @@ class WorldChanges private constructor() : SavedData() {
             return true
         }
 
-        /** "Start over": deshace todos los cambios de [owner] (los de chunks sin cargar, al cargarse). */
+        /** "Start over": undoes every change by [owner] (those in unloaded chunks, when they load). */
         fun undoAll(server: MinecraftServer, owner: UUID) {
             val data = get(server)
             for (byPos in data.changes.values) {
@@ -128,7 +128,7 @@ class WorldChanges private constructor() : SavedData() {
             data.restorePending(server)
         }
 
-        /** Desde el tick del servidor: aplica las restauraciones pendientes cuyo chunk ya esté cargado. */
+        /** From the server tick: applies the pending restorations whose chunk is already loaded. */
         fun tick(server: MinecraftServer) {
             if (server.tickCount % RESTORE_INTERVAL != 0) return
             val data = get(server)
@@ -158,8 +158,8 @@ class WorldChanges private constructor() : SavedData() {
         }
 
         /**
-         * null si el bloque guardado ya no existe (un mod desinstalado): readBlockState lo
-         * convertiría en aire, y restaurar "aire" podría borrar algo del jugador.
+         * null if the saved block no longer exists (an uninstalled mod): readBlockState would turn
+         * it into air, and restoring "air" could delete something of the player's.
          */
         private fun readState(blocks: HolderGetter<Block>, tag: CompoundTag): BlockState? {
             val state = NbtUtils.readBlockState(blocks, tag)
@@ -174,7 +174,7 @@ class WorldChanges private constructor() : SavedData() {
             val (dimension, byPos) = dimensions.next()
             val level = server.getLevel(dimension)
             if (level == null) {
-                // La dimensión ya no existe (un mod desinstalado): no hay nada que restaurar.
+                // The dimension no longer exists (an uninstalled mod): there is nothing to restore.
                 val dropped = byPos.values.count { it.restoring }
                 if (dropped > 0) {
                     LOGGER.warn("Abuse mode: dimension {} no longer exists; {} block(s) there cannot be restored.",
@@ -190,8 +190,8 @@ class WorldChanges private constructor() : SavedData() {
                 val (key, change) = iterator.next()
                 if (!change.restoring) continue
                 val pos = BlockPos.of(key)
-                if (!level.isLoaded(pos)) continue  // se intentará cuando se cargue el chunk
-                // Solo si sigue siendo lo que puso el mod: si el jugador lo cambió, manda su cambio.
+                if (!level.isLoaded(pos)) continue  // retried when the chunk loads
+                // Only if it is still what the mod placed: if the player changed it, their change wins.
                 if (level.getBlockState(pos).`is`(change.placed.block)) {
                     level.setBlock(pos, change.original, SILENT)
                 }

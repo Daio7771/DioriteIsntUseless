@@ -8,28 +8,28 @@ import daio7771.dioriteisntuseless.Dioriteisntuseless.Companion.LOGGER
 import java.math.BigDecimal
 
 /**
- * Convierte entre el árbol JSON del archivo y DiuConfig.
+ * Converts between the JSON tree of the file and DiuConfig.
  *
- * Trabaja sobre el árbol en vez de sobre una clase para poder tocar solo lo necesario: las
- * claves desconocidas se quedan donde están y los valores incorrectos no se reescriben, solo se
- * avisa en el log y se usa otro valor.
+ * It works on the tree rather than on a class so it only touches what it has to: unknown keys stay
+ * where they are and wrong values are not rewritten; they are only reported in the log and another
+ * value is used.
  */
 internal object ConfigCodec {
 
-    /** Sube cuando cambie el formato del archivo y haya que migrar los de versiones anteriores. */
+    /** Goes up when the file format changes and files from older versions have to be migrated. */
     const val CURRENT_VERSION = 2
 
     private const val VERSION_KEY = "configVersion"
 
     class Decoded(
         val config: DiuConfig,
-        /** Valores ajustados o sustituidos (fuera de rango, tipo incorrecto, valor desconocido). */
+        /** Values adjusted or replaced (out of range, wrong type, unknown value). */
         val corrections: Int,
-        /** Se han añadido claves que faltaban al árbol y hay que reescribir el archivo. */
+        /** Missing keys were added to the tree and the file has to be rewritten. */
         val treeChanged: Boolean,
     )
 
-    /** Lee [root] (y le añade las claves que falten, con su valor por defecto). */
+    /** Reads [root] (and adds any missing keys to it, with their default value). */
     fun decode(root: JsonObject): Decoded {
         val reader = Reader(root)
         reader.checkVersion()
@@ -98,7 +98,7 @@ internal object ConfigCodec {
         return Decoded(config, reader.corrections, reader.treeChanged)
     }
 
-    /** Escribe [config] en [root], conservando las claves que no son del mod. */
+    /** Writes [config] into [root], keeping the keys that do not belong to the mod. */
     fun encode(config: DiuConfig, root: JsonObject): JsonObject {
         root.addProperty(VERSION_KEY, CURRENT_VERSION)
         section(root, "diorite").apply {
@@ -139,7 +139,7 @@ internal object ConfigCodec {
 
     private fun intArray(values: List<Int>): JsonArray = JsonArray().apply { values.forEach(::add) }
 
-    /** La sección [name] de [root]; si falta o no es un objeto, la crea (en el mismo sitio). */
+    /** Section [name] of [root]; if missing or not an object, it is created (in the same place). */
     private fun section(root: JsonObject, name: String): JsonObject =
         root.get(name) as? JsonObject ?: JsonObject().also { root.add(name, it) }
 
@@ -152,7 +152,7 @@ internal object ConfigCodec {
         fun checkVersion() {
             val element = root.get(VERSION_KEY)
             if (element == null) {
-                // Va la primera, como en un archivo nuevo: se saca todo y se vuelve a meter detrás.
+                // It goes first, as in a new file: everything is taken out and put back after it.
                 val entries = root.entrySet().map { it.key to it.value }
                 entries.forEach { root.remove(it.first) }
                 root.addProperty(VERSION_KEY, CURRENT_VERSION)
@@ -176,7 +176,7 @@ internal object ConfigCodec {
             }
         }
 
-        /** Convierte un archivo de una versión anterior, paso a paso, hasta [CURRENT_VERSION]. */
+        /** Converts a file from an older version, step by step, up to [CURRENT_VERSION]. */
         private fun migrate(from: Int) {
             if (from < 2) migrateToVersion2()
             root.addProperty(VERSION_KEY, CURRENT_VERSION)
@@ -184,9 +184,9 @@ internal object ConfigCodec {
         }
 
         /**
-         * Versión 2: el Abuse Mode avanza por árboles talados. La puntuación y los días ya no
-         * existen y sus opciones se quitan. El hacha pasa a aguantar 17 árboles en vez de 7, salvo
-         * que se hubiera cambiado ese valor.
+         * Version 2: the Abuse Mode advances by trees felled. Score and days no longer exist and
+         * their options are removed. The axe now lasts 17 trees instead of 7, unless that value
+         * had been changed.
          */
         private fun migrateToVersion2() {
             val abuseMode = root.get("abuseMode") as? JsonObject
@@ -205,7 +205,7 @@ internal object ConfigCodec {
             }
         }
 
-        /** La sección [name]. Si falta, se crea vacía (y se rellena con los valores por defecto). */
+        /** Section [name]. If missing, it is created empty (and filled with the default values). */
         fun section(name: String): Section {
             val element = root.get(name)
             if (element == null) {
@@ -242,8 +242,8 @@ internal object ConfigCodec {
         }
 
         /**
-         * Una lista de enteros del mismo tamaño que [default]. Si no lo es (o algún elemento no
-         * es un entero), se usa la lista por defecto entera; cada elemento se ajusta a [range].
+         * A list of whole numbers of the same size as [default]. If it is not (or some element is
+         * not a whole number), the whole default list is used; each element is clamped to [range].
          */
         fun intList(section: Section, key: String, default: List<Int>, range: IntRange): List<Int> {
             val element = element(section, key, intArray(default)) ?: return default
@@ -272,8 +272,9 @@ internal object ConfigCodec {
         }
 
         /**
-         * El valor de [key], o null si hay que usar el valor por defecto sin avisar: porque la
-         * sección no es válida (ya se avisó) o porque falta la clave (se añade con [default]).
+         * The value of [key], or null if the default value should be used without a warning:
+         * because the section is not valid (already reported) or because the key is missing (it
+         * is added with [default]).
          */
         private fun element(section: Section, key: String, default: JsonElement): JsonElement? {
             val json = section.json ?: return null
@@ -303,15 +304,15 @@ internal object ConfigCodec {
         }
     }
 
-    /** [json] es null si la sección existe pero no es un objeto. */
+    /** [json] is null if the section exists but is not an object. */
     private class Section(val name: String, val json: JsonObject?) {
         fun path(key: String) = "$name.$key"
     }
 
-    /** El número de un valor JSON, o null si no es un número (por ejemplo "64", con comillas). */
+    /** The number in a JSON value, or null if it is not a number (for example "64", with quotes). */
     private fun JsonElement.asNumberOrNull(): BigDecimal? {
         if (this !is JsonPrimitive || !isNumber) return null
-        // Un exponente enorme (1e9999999999) no cabe ni en BigDecimal.
+        // A huge exponent (1e9999999999) does not even fit in a BigDecimal.
         return try { asBigDecimal } catch (e: NumberFormatException) { null }
     }
 

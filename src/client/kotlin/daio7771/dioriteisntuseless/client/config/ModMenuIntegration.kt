@@ -5,14 +5,14 @@ import com.terraformersmc.modmenu.api.ModMenuApi
 import net.fabricmc.loader.api.FabricLoader
 
 /**
- * Entrypoint "modmenu": Mod Menu solo carga esta clase si está instalado. La pantalla necesita
- * además Cloth Config; sin él, Mod Menu no muestra botón de configuración y el JSON se edita a mano.
+ * "modmenu" entrypoint: Mod Menu only loads this class if it is installed. The screen also needs
+ * Cloth Config; without it, Mod Menu shows no config button and the JSON is edited by hand.
  */
 class ModMenuIntegration : ModMenuApi {
 
     override fun getModConfigScreenFactory(): ConfigScreenFactory<*> {
         if (!FabricLoader.getInstance().isModLoaded("cloth-config")) return super.getModConfigScreenFactory()
-        // DiuConfigScreen (y con ella Cloth Config) no se carga hasta abrir la pantalla.
+        // DiuConfigScreen (and Cloth Config with it) is not loaded until the screen is opened.
         return ConfigScreenFactory { parent -> DiuConfigScreen.create(parent) }
     }
 }

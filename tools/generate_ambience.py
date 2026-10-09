@@ -1,30 +1,30 @@
 #!/usr/bin/env python3
 """
-Diorite Isn't Useless — generador del fondo inquietante del Abuse Mode (OGG Vorbis, estéreo).
+Diorite Isn't Useless — generator of the unsettling Abuse Mode background (OGG Vorbis, stereo).
 
-Genera un bucle de 32 s por nivel: level1.ogg a level4.ogg y final.ogg (el final: fase B y
-después). El cliente los reproduce en bucle y pasa de uno a otro con fundidos (AbuseAmbience).
-Son los previews aprobados por Daio: el 1 (fase B) y el 2 (progresión de niveles).
+Generates one 32 s loop per level: level1.ogg to level4.ogg and final.ogg (the ending: phase B
+and after). The client plays them in a loop and crossfades from one to the next (AbuseAmbience).
+They are the previews approved by Daio: number 1 (phase B) and number 2 (level progression).
 
-Capas, mezcladas en cada nivel con cantidades distintas (LEVELS):
-- drone:  graves a 55 Hz con copias desafinadas que laten despacio, octava y "respiración".
-- rumble: ruido grave filtrado, como un viento lejano bajo tierra, que sube y baja.
-- whine:  una nota aguda casi inaudible con vibrato. Desde el nivel 3.
-- clash:  tritono y segunda menor que chocan con el grave. Desde el nivel 4.
+Layers, mixed in different amounts at each level (LEVELS):
+- drone:  bass at 55 Hz with detuned copies that beat slowly, an octave and some "breathing".
+- rumble: filtered low noise, like a distant underground wind, rising and falling.
+- whine:  an almost inaudible high note with vibrato. From level 3.
+- clash:  a tritone and a minor second that clash with the bass. From level 4.
 
-El bucle no tiene costura: todas las frecuencias y modulaciones dan un número entero de vueltas
-en 32 s y el ruido se sintetiza en frecuencia, así que es periódico por construcción. Todo entra
-y sale despacio (regla de oro: nada de sonidos fuertes de golpe); los fundidos al empezar y al
-cambiar de nivel los hace el juego.
+The loop has no seam: every frequency and modulation makes a whole number of cycles in 32 s and
+the noise is synthesized in the frequency domain, so it is periodic by construction. Everything
+fades in and out slowly (golden rule: no loud, sudden sounds); the fades when starting and when
+changing level are done by the game.
 
-Uso:
-    python generate_ambience.py               -> genera en ./out
-    python generate_ambience.py --out DIR     -> genera en DIR
-    python generate_ambience.py --wav         -> además, copias .wav para escucharlas
+Usage:
+    python generate_ambience.py               -> generates into ./out
+    python generate_ambience.py --out DIR     -> generates into DIR
+    python generate_ambience.py --wav         -> also writes .wav copies to listen to
 
-Destino en el mod: src/main/resources/assets/dioriteisntuseless/sounds/ambience/
+Destination in the mod: src/main/resources/assets/dioriteisntuseless/sounds/ambience/
 
-Necesita numpy y soundfile (pip install numpy soundfile; soundfile trae libsndfile con Vorbis).
+Needs numpy and soundfile (pip install numpy soundfile; soundfile ships libsndfile with Vorbis).
 """
 
 import argparse
@@ -34,17 +34,17 @@ import numpy as np
 import soundfile as sf
 
 SAMPLE_RATE = 44100
-LOOP_SECONDS = 32.0                 # todas las frecuencias son múltiplo de 1 / 32 Hz
+LOOP_SECONDS = 32.0                 # every frequency is a multiple of 1 / 32 Hz
 FRAMES = int(SAMPLE_RATE * LOOP_SECONDS)
-PEAK_DB = -3.0                      # pico del bucle más fuerte (el final)
-VORBIS_QUALITY = 0.8                # 0..1; con menos, la compresión deja un clic en la costura
-WRITE_BLOCK = 4096                  # muestras por escritura al codificar
+PEAK_DB = -3.0                      # peak of the loudest loop (the ending)
+VORBIS_QUALITY = 0.8                # 0..1; any lower and the compression leaves a click at the seam
+WRITE_BLOCK = 4096                  # samples per write when encoding
 NOISE_SEED = 1234
 
 t = np.arange(FRAMES) / SAMPLE_RATE
 
-# Mezcla de cada nivel: (volumen, drone, rumble, whine, clash). El volumen es relativo: el final
-# se normaliza a PEAK_DB y todos los demás llevan el mismo factor.
+# Mix of each level: (volume, drone, rumble, whine, clash). The volume is relative: the ending
+# is normalized to PEAK_DB and every other loop gets the same factor.
 LEVELS = {
     "level1": (0.18, 1.0, 0.25, 0.0, 0.0),
     "level2": (0.30, 1.0, 0.55, 0.0, 0.0),
@@ -55,18 +55,18 @@ LEVELS = {
 
 
 def sine(freq: float, phase: float = 0.0) -> np.ndarray:
-    assert abs(freq * LOOP_SECONDS - round(freq * LOOP_SECONDS)) < 1e-9, f"{freq} Hz no cierra el bucle"
+    assert abs(freq * LOOP_SECONDS - round(freq * LOOP_SECONDS)) < 1e-9, f"{freq} Hz does not close the loop"
     return np.sin(2 * np.pi * freq * t + phase)
 
 
 def lfo(period: float, phase: float = 0.0) -> np.ndarray:
-    """De 0 a 1 y vuelta, cada `period` segundos (divisor de LOOP_SECONDS)."""
-    assert abs(LOOP_SECONDS / period - round(LOOP_SECONDS / period)) < 1e-9, f"{period} s no cierra el bucle"
+    """From 0 to 1 and back, every `period` seconds (a divisor of LOOP_SECONDS)."""
+    assert abs(LOOP_SECONDS / period - round(LOOP_SECONDS / period)) < 1e-9, f"{period} s does not close the loop"
     return 0.5 - 0.5 * np.cos(2 * np.pi * t / period + phase)
 
 
 def shaped_noise(rng: np.random.Generator, lowpass: float, highpass: float, resonance) -> np.ndarray:
-    """Ruido rosa filtrado, sintetizado en frecuencia con fases al azar: periódico en el bucle."""
+    """Filtered pink noise, synthesized in the frequency domain with random phases: periodic in the loop."""
     freqs = np.fft.rfftfreq(FRAMES, 1 / SAMPLE_RATE)
     mag = np.zeros_like(freqs)
     band = freqs > 0
@@ -80,12 +80,12 @@ def shaped_noise(rng: np.random.Generator, lowpass: float, highpass: float, reso
 
 
 def vibrato_tone(freq: float, depth: float, period: float) -> np.ndarray:
-    """Seno de `freq` Hz con vibrato de ±`depth` Hz cada `period` s, sin romper el bucle."""
+    """Sine wave at `freq` Hz with a vibrato of ±`depth` Hz every `period` s, without breaking the loop."""
     return np.sin(2 * np.pi * freq * t - depth * period * np.cos(2 * np.pi * t / period))
 
 
 def layers() -> dict[str, np.ndarray]:
-    """Las cuatro capas, con los canales izquierdo y derecho algo distintos para dar anchura."""
+    """The four layers, with the left and right channels slightly different to give some width."""
     rng = np.random.default_rng(NOISE_SEED)
     out = {}
     for ch, beat in (("L", 55.25), ("R", 55.3125)):
@@ -117,8 +117,8 @@ def mix(parts: dict[str, np.ndarray], level: str) -> np.ndarray:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--out", type=Path, default=Path("out"), help="carpeta de salida (por defecto ./out)")
-    parser.add_argument("--wav", action="store_true", help="genera también .wav para escucharlos")
+    parser.add_argument("--out", type=Path, default=Path("out"), help="output folder (./out by default)")
+    parser.add_argument("--wav", action="store_true", help="also generate .wav files to listen to")
     args = parser.parse_args()
 
     parts = layers()
@@ -130,7 +130,7 @@ def main() -> None:
         path = args.out / f"{level}.ogg"
         with sf.SoundFile(path, "w", SAMPLE_RATE, 2, format="OGG", subtype="VORBIS",
                           compression_level=1 - VORBIS_QUALITY) as ogg:
-            # Por bloques: el codificador Vorbis de libsndfile desborda la pila con bloques grandes.
+            # In blocks: libsndfile's Vorbis encoder overflows the stack with large blocks.
             for start in range(0, FRAMES, WRITE_BLOCK):
                 ogg.write(samples[start:start + WRITE_BLOCK])
         if args.wav:

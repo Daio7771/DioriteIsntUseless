@@ -12,17 +12,18 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.player.LocalPlayer
 
 /**
- * Cuándo se abren los créditos: cuando tocan (ClientAbuseState) y el jugador está en un momento
- * tranquilo, y nunca en mitad de un combate (si acaba de recibir daño o está ardiendo, se espera).
- * Se abren solos en cuanto no hay ninguna pantalla abierta (no interrumpen el chat ni el
- * inventario), y también en lugar del menú de pausa o de la cama. MinecraftMixin le pasa cada
- * pantalla que se abre, así que los créditos ocupan su lugar sin que se vea la otra.
+ * When the credits open: when they are due (ClientAbuseState) and the player is in a calm moment,
+ * and never in the middle of a fight (if they were just hurt or are on fire, it waits).
+ * They open on their own as soon as no screen is open (they do not interrupt the chat or the
+ * inventory), and also in place of the pause menu or the bed screen. MinecraftMixin passes it
+ * every screen that opens, so the credits take its place without the other one being seen.
  *
- * Para no dejar a nadie atrapado: si cierra los créditos con Escape, ya no se abren solos hasta
- * la próxima sesión; la pausa vuelve a ser la pausa también hasta la próxima sesión (si los cerró
- * desde ella), y en la cama no vuelven hasta la próxima vez que duerma.
+ * So nobody gets trapped: if they close the credits with Escape, they no longer open on their own
+ * until the next session; the pause menu goes back to being the pause menu until the next session
+ * too (if they were closed from it), and in bed they do not come back until the next time they
+ * sleep.
  *
- * Todo se usa desde el hilo del cliente.
+ * Everything is used from the client thread.
  */
 object CreditsGate {
 
@@ -42,14 +43,14 @@ object CreditsGate {
         }
     }
 
-    /** Los abre solos si tocan, no hay ninguna pantalla abierta y es un momento tranquilo. */
+    /** Opens them on their own if they are due, no screen is open and it is a calm moment. */
     private fun openIfCalm(client: Minecraft) {
         if (!ClientAbuseState.creditsDue || autoDismissed || client.screen != null || client.overlay != null) return
         try {
             val player = client.player ?: return
             if (!player.isSleeping && isCalm(player)) client.setScreen(CreditsScreen(null))
         } catch (e: Exception) {
-            // Regla de oro 1: sin créditos antes que sin juego. No se reintenta en esta sesión.
+            // Golden rule 1: better no credits than no game. Not retried this session.
             LOGGER.error("Could not open the credits.", e)
             autoDismissed = true
         }
@@ -67,7 +68,7 @@ object CreditsGate {
             }
             if (trigger && isCalm(player)) CreditsScreen(screen) else screen
         } catch (e: Exception) {
-            // Regla de oro 1: sin créditos antes que sin juego.
+            // Golden rule 1: better no credits than no game.
             LOGGER.error("Could not open the credits.", e)
             screen
         }
@@ -76,7 +77,7 @@ object CreditsGate {
     private fun isCalm(player: LocalPlayer): Boolean =
         player.isAlive && player.hurtTime == 0 && !player.isOnFire && player.airSupply > 0
 
-    /** Escape en los créditos (solo cuando ya está el botón). [next] es null si se abrieron solos. */
+    /** Escape in the credits (only once the button is there). [next] is null if they opened on their own. */
     fun onDismissed(next: Screen?) {
         when (next) {
             null -> autoDismissed = true
@@ -85,7 +86,7 @@ object CreditsGate {
         }
     }
 
-    /** El botón "Start over": se lo pide al servidor, que comprueba que de verdad toca. */
+    /** The "Start over" button: asks the server, which checks that it really is due. */
     fun onStartOver() {
         ClientAbuseState.creditsDue = false
         if (ClientPlayNetworking.canSend(StartOverPacket.TYPE)) ClientPlayNetworking.send(StartOverPacket())

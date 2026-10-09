@@ -6,24 +6,23 @@ import net.fabricmc.fabric.api.networking.v1.PacketType
 import net.minecraft.network.FriendlyByteBuf
 
 /**
- * Servidor -> cliente del jugador afectado: lo que su cliente necesita saber del Abuse Mode.
- * - [dioriteUseless]: fase A del final (ver DioriteUselessness).
- * - [creditsDue] (versión 2): la fase B ha terminado; los créditos se abren en el próximo
- *   momento tranquilo.
- * - [level] (versión 3): nivel del Abuse Mode, de 0 a 5 (el final); 0 también si está
- *   desactivado. Decide el fondo que suena (AbuseAmbience).
+ * Server -> client of the affected player: what their client needs to know about the Abuse Mode.
+ * - [dioriteUseless]: phase A of the ending (see DioriteUselessness).
+ * - [creditsDue] (version 2): phase B is over; the credits open at the next calm moment.
+ * - [level] (version 3): Abuse Mode level, from 0 to 5 (the ending); also 0 if it is disabled.
+ *   It decides which background sound plays (AbuseAmbience).
  *
- * Formato: [VERSION] y luego los campos; las versiones futuras solo añaden campos al final.
+ * Format: [VERSION] and then the fields; future versions only add fields at the end.
  */
 class AbuseStatePacket(val dioriteUseless: Boolean, val creditsDue: Boolean, val level: Int) : FabricPacket {
 
     override fun write(buf: FriendlyByteBuf) {
         buf.writeVarInt(VERSION)
-        // Versión 1
+        // Version 1
         buf.writeBoolean(dioriteUseless)
-        // Versión 2
+        // Version 2
         buf.writeBoolean(creditsDue)
-        // Versión 3
+        // Version 3
         buf.writeVarInt(level)
     }
 

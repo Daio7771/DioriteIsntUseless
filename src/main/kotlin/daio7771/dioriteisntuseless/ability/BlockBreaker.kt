@@ -13,25 +13,25 @@ import net.minecraft.world.level.block.state.BlockState
 import kotlin.math.min
 
 /**
- * Romper bloques "como si los rompiera el jugador" para las habilidades de las herramientas
- * (TreeFeller, AreaMiner): mismas comprobaciones y eventos que vanilla, para respetar protecciones
- * y que otros mods puedan cancelarlo. Solo en el servidor.
+ * Breaking blocks "as if the player broke them" for the tool abilities (TreeFeller, AreaMiner):
+ * the same checks and events as vanilla, so protections are respected and other mods can cancel
+ * it. Server only.
  */
 internal object BlockBreaker {
 
-    /** Igual que vanilla (Block.playerDestroy). */
+    /** Same as vanilla (Block.playerDestroy). */
     private const val BREAK_EXHAUSTION = 0.005f
 
-    /** Las mismas comprobaciones que hace vanilla antes de dejar romper un bloque. */
+    /** The same checks vanilla makes before letting a block be broken. */
     fun mayBreak(level: ServerLevel, player: ServerPlayer, pos: BlockPos, state: BlockState): Boolean =
-        level.mayInteract(player, pos) &&  // protección del spawn y borde del mundo
-            !player.blockActionRestricted(level, pos, player.gameMode.gameModeForPlayer) &&  // aventura, espectador
+        level.mayInteract(player, pos) &&  // spawn protection and world border
+            !player.blockActionRestricted(level, pos, player.gameMode.gameModeForPlayer) &&  // adventure, spectator
             player.mainHandItem.item.canAttackBlock(state, level, pos, player)
 
     /**
-     * Rompe el bloque de [pos] como si lo hubiera roto el jugador con [tool] (mismos pasos que
-     * ServerPlayerGameMode.destroyBlock), pero devuelve sus drops en vez de soltarlos. Devuelve
-     * null si no se ha roto (protegido, cancelado o ya no es un bloque que [accepts]).
+     * Breaks the block at [pos] as if the player had broken it with [tool] (same steps as
+     * ServerPlayerGameMode.destroyBlock), but returns its drops instead of dropping them. Returns
+     * null if it was not broken (protected, cancelled or no longer a block that [accepts]).
      */
     fun breakAsPlayer(
         level: ServerLevel,
@@ -40,7 +40,7 @@ internal object BlockBreaker {
         tool: ItemStack,
         accepts: (BlockState) -> Boolean,
     ): List<ItemStack>? {
-        // El estado puede haber cambiado desde la búsqueda (otros mods reaccionan a cada rotura).
+        // The state may have changed since the search (other mods react to every break).
         val state = level.getBlockState(pos)
         if (!accepts(state) || !mayBreak(level, player, pos, state)) return null
 
@@ -53,25 +53,25 @@ internal object BlockBreaker {
         val block = state.block
         block.playerWillDestroy(level, pos, state, player)
         if (!level.removeBlock(pos, false)) return null
-        // playerWillDestroy manda las partículas y el sonido a todos menos al jugador, porque
-        // vanilla da por hecho que su cliente ya predijo la rotura. Aquí no la predijo.
+        // playerWillDestroy sends the particles and the sound to everyone but the player, because
+        // vanilla assumes their client already predicted the break. Here it did not.
         player.connection.send(ClientboundLevelEventPacket(LevelEvent.PARTICLES_DESTROY_BLOCK, pos, Block.getId(state), false))
         PlayerBlockBreakEvents.AFTER.invoker().afterBlockBreak(level, player, pos, state, blockEntity)
         block.destroy(level, pos, state)
 
-        // Como vanilla: en creativo no hay estadísticas, hambre ni drops.
+        // Like vanilla: in creative there are no statistics, hunger or drops.
         if (player.isCreative) return emptyList()
         player.awardStat(Stats.ITEM_USED.get(tool.item))
         if (!player.hasCorrectToolForDrops(state)) return emptyList()
         player.awardStat(Stats.BLOCK_MINED.get(block))
         player.causeFoodExhaustion(BREAK_EXHAUSTION)
-        // Tabla de botín real del bloque, con la herramienta como contexto.
+        // The block's real loot table, with the tool as context.
         val drops = Block.getDrops(state, level, pos, blockEntity, player, tool)
         state.spawnAfterBreak(level, pos, tool, true)
         return drops
     }
 
-    /** Junta los drops iguales en pilas completas y los suelta en el bloque que golpeó el jugador. */
+    /** Merges equal drops into full stacks and drops them at the block the player hit. */
     fun dropAllAt(level: ServerLevel, origin: BlockPos, drops: List<ItemStack>) {
         val merged = ArrayList<ItemStack>()
         for (drop in drops) {

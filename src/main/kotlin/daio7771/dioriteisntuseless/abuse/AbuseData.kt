@@ -10,11 +10,11 @@ import net.minecraft.world.level.saveddata.SavedData
 import java.util.UUID
 
 /**
- * Estado del Abuse Mode de cada jugador, guardado con el mundo (data/dioriteisntuseless_abuse.dat
- * del Overworld). Está en el mundo y no en el archivo del jugador para poder consultarlo y
- * cambiarlo aunque el jugador no esté conectado.
+ * Abuse Mode state of every player, saved with the world (data/dioriteisntuseless_abuse.dat in
+ * the Overworld). It lives in the world rather than in the player file so it can be read and
+ * changed even while the player is offline.
  *
- * Solo se usa desde el hilo del servidor.
+ * Only used from the server thread.
  */
 class AbuseData private constructor() : SavedData() {
 
@@ -41,9 +41,9 @@ class AbuseData private constructor() : SavedData() {
         private val NAME = "${Dioriteisntuseless.MOD_ID}_abuse"
 
         /**
-         * Sube si cambia el formato y hay que convertir los datos guardados.
-         * 2: el nivel avanza por árboles talados (antes, por puntuación y días).
-         * 3: también por picadas del pico; las señales van por acciones (árboles + picadas).
+         * Goes up when the format changes and saved data has to be converted.
+         * 2: the level advances by trees felled (before, by score and days).
+         * 3: also by pickaxe strikes; signals go by actions (trees + strikes).
          */
         private const val DATA_VERSION = 3
 
@@ -63,78 +63,78 @@ class AbuseData private constructor() : SavedData() {
     }
 }
 
-/** Progreso de un jugador. Todo se pone a 0 con "Start over" ([resetProgress]). */
+/** Progress of one player. Everything goes back to 0 with "Start over" ([resetProgress]). */
 class PlayerAbuse {
     /**
-     * 0 = nada; 1 a 4 = niveles; 5 = final (AbuseTracker.LEVEL_FINAL). Nunca baja (salvo
-     * "Start over" o el comando de pruebas).
+     * 0 = nothing; 1 to 4 = levels; 5 = the ending (AbuseTracker.LEVEL_FINAL). Never goes down
+     * (except with "Start over" or the testing command).
      */
     var level = 0
 
-    /** Árboles enteros talados con el hacha de dioritina (en supervivencia y con el Abuse Mode activo). */
+    /** Whole trees felled with the dioritine axe (in survival and with the Abuse Mode active). */
     var treesFelled = 0L
 
-    /** Árboles talados desde que llegó al nivel actual: deciden cuándo sube y cuándo llega el final. */
+    /** Trees felled since reaching the current level: they decide when it goes up and when the ending comes. */
     var treesAtLevel = 0L
 
-    /** Picadas 3x3 con el pico de dioritina (en supervivencia y con el Abuse Mode activo). */
+    /** 3x3 strikes with the dioritine pickaxe (in survival and with the Abuse Mode active). */
     var strikes = 0L
 
-    /** Picadas desde que llegó al nivel actual: suman con [treesAtLevel] (AbuseTracker.stepReached). */
+    /** Strikes since reaching the current level: they add up with [treesAtLevel] (AbuseTracker.stepReached). */
     var strikesAtLevel = 0L
 
-    /** Acciones de abuso: cada árbol y cada picada es una. Marcan el ritmo de las señales. */
+    /** Abuse actions: every tree and every strike is one. They set the pace of the signals. */
     val actions: Long get() = treesFelled + strikes
 
-    /** Ticks jugados por este jugador (solo cuentan conectado y con el Abuse Mode activo). */
+    /** Ticks played by this player (only counted while online and with the Abuse Mode active). */
     var playTicks = 0L
 
     /**
-     * [playTicks] en que ocurre la próxima señal, o -1 si no hay ninguna en camino. En los niveles
-     * 1 a 4 se fija poco después de llegar a [signalDueAtActions]; en el final, solo por tiempo.
+     * [playTicks] at which the next signal happens, or -1 if none is on its way. At levels 1 to 4
+     * it is set shortly after reaching [signalDueAtActions]; at the ending, by time only.
      */
     var nextSignalAt = -1L
 
-    /** Niveles 1 a 4: con estas [actions] toca la próxima señal, o -1. */
+    /** Levels 1 to 4: the next signal is due at these [actions], or -1. */
     var signalDueAtActions = -1L
 
-    /** Id de la última señal, para no repetir la misma dos veces seguidas. */
+    /** Id of the last signal, so the same one never comes twice in a row. */
     var lastSignal = ""
 
-    /** Última frase en Morse, por lo mismo. */
+    /** Last Morse phrase, for the same reason. */
     var lastMorsePhrase = ""
 
-    /** Última palabra de cartel, por lo mismo. */
+    /** Last sign word, for the same reason. */
     var lastSignWord = ""
 
-    /** [playTicks] cuando apareció EL cartel del nivel 4, o -1 si aún no ha aparecido. */
+    /** [playTicks] when THE level 4 sign appeared, or -1 if it has not appeared yet. */
     var finalSignPlacedAt = -1L
 
-    /** [playTicks] en que empezó a tocar el final (nivel 4, cartel puesto y árboles o picadas), o -1. */
+    /** [playTicks] at which the ending became due (level 4, sign placed and trees or strikes done), or -1. */
     var endingDueAt = -1L
 
-    /** [playTicks] de la fase A del final (empieza la fase B), o -1. */
+    /** [playTicks] of phase A of the ending (phase B starts), or -1. */
     var endingStartedAt = -1L
 
-    /** Mensajes de la fase B ya enviados (EndingMessages). */
+    /** Phase B messages already sent (EndingMessages). */
     var endingMessagesSent = 0
 
-    /** Ya se le ha dicho a su cliente que tocan los créditos. No se guarda: al entrar se le repite. */
+    /** Their client has already been told the credits are due. Not saved: repeated on join. */
     var creditsAnnounced = false
 
-    /** Fase A del final: el hacha no tala, el pico no pica 3x3 y fundir diorita no le da cristales a este jugador. */
+    /** Phase A of the ending: for this player the axe does not fell, the pickaxe does not mine 3x3 and smelting diorite gives no crystals. */
     var dioriteUseless = false
 
     /**
-     * Lo que le quitó la fase A del final, para devolvérselo en "Start over". No se borra con
-     * [resetProgress]: se vacía al devolverlo.
+     * What phase A of the ending took away, to give it back on "Start over". Not cleared by
+     * [resetProgress]: it is emptied when given back.
      */
     val takenItems = ArrayList<ItemStack>()
 
-    /** "Start over" se hizo sin el jugador conectado: [takenItems] se le devuelve al entrar. */
+    /** "Start over" happened while the player was offline: [takenItems] is given back on join. */
     var returnItemsOnJoin = false
 
-    /** "Start over": nivel, contadores, tiempo y señales a 0, y la diorita vuelve a ser útil. */
+    /** "Start over": level, counters, time and signals back to 0, and diorite is useful again. */
     fun resetProgress() {
         level = 0
         treesFelled = 0
@@ -178,9 +178,9 @@ class PlayerAbuse {
 
     companion object {
         /**
-         * [version] es el DataVersion del archivo. Los datos de la versión 1 (nivel por puntuación
-         * y días) conservan el nivel y empiezan a contar árboles desde 0 en él. Los de la 2 no
-         * tienen picadas: empiezan en 0 y sus acciones son sus árboles.
+         * [version] is the DataVersion of the file. Version 1 data (level by score and days)
+         * keeps its level and starts counting trees from 0 in it. Version 2 data has no strikes:
+         * they start at 0 and its actions are its trees.
          */
         fun load(tag: CompoundTag, version: Int) = PlayerAbuse().apply {
             level = tag.getInt("Level").coerceIn(0, AbuseTracker.LEVEL_FINAL)
@@ -189,11 +189,11 @@ class PlayerAbuse {
             strikes = tag.getLong("Strikes").coerceAtLeast(0)
             strikesAtLevel = tag.getLong("StrikesAtLevel").coerceIn(0, strikes)
             playTicks = tag.getLong("PlayTicks").coerceAtLeast(0)
-            // Si falta (datos de antes de las señales), -1: se programa en el siguiente tick.
+            // If missing (data from before the signals), -1: it is scheduled on the next tick.
             nextSignalAt = if (tag.contains("NextSignalAt")) tag.getLong("NextSignalAt").coerceAtLeast(-1) else -1
-            // En la versión 1 las señales de los niveles 1 a 4 iban por tiempo: se reprograman por árboles.
+            // In version 1 the signals of levels 1 to 4 went by time: they are rescheduled by trees.
             if (version < 2 && level < AbuseTracker.LEVEL_FINAL) nextSignalAt = -1
-            // Hasta la versión 2 se guardaba por árboles; sin picadas, árboles y acciones son lo mismo.
+            // Up to version 2 it was saved by trees; without strikes, trees and actions are the same.
             val dueKey = if (tag.contains("SignalDueAtActions")) "SignalDueAtActions" else "SignalDueAtTrees"
             signalDueAtActions = if (tag.contains(dueKey)) tag.getLong(dueKey).coerceAtLeast(-1) else -1
             lastSignal = tag.getString("LastSignal")
@@ -202,8 +202,8 @@ class PlayerAbuse {
             finalSignPlacedAt = if (tag.contains("FinalSignPlacedAt")) tag.getLong("FinalSignPlacedAt").coerceIn(-1, playTicks) else -1
             endingDueAt = if (tag.contains("EndingDueAt")) tag.getLong("EndingDueAt").coerceIn(-1, playTicks) else -1
             endingStartedAt = if (tag.contains("EndingStartedAt")) tag.getLong("EndingStartedAt").coerceIn(-1, playTicks) else -1
-            // Si falta (datos de antes de los mensajes), los que ya tocaban se dan por enviados:
-            // nada de soltarlos todos de golpe.
+            // If missing (data from before the messages), the ones already due count as sent:
+            // never dump them all at once.
             endingMessagesSent = if (tag.contains("EndingMessagesSent")) {
                 tag.getInt("EndingMessagesSent").coerceIn(0, EndingMessages.COUNT)
             } else {
@@ -211,7 +211,7 @@ class PlayerAbuse {
             }
             dioriteUseless = tag.getBoolean("DioriteUseless")
             for (item in tag.getList("TakenItems", Tag.TAG_COMPOUND.toInt())) {
-                // Un ítem de un mod que ya no está se lee como vacío: se pierde (no hay nada que devolver).
+                // An item from a mod that is gone reads as empty: it is lost (there is nothing to give back).
                 ItemStack.of(item as CompoundTag).takeUnless { it.isEmpty }?.let(takenItems::add)
             }
             returnItemsOnJoin = tag.getBoolean("ReturnItemsOnJoin")

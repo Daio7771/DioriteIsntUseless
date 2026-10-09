@@ -6,10 +6,10 @@ import net.fabricmc.fabric.api.networking.v1.PacketType
 import net.minecraft.network.FriendlyByteBuf
 
 /**
- * Cliente -> servidor: el jugador ha pulsado "Start over" en los créditos. El servidor solo lo
- * acepta si de verdad le tocan los créditos (un cliente no puede reiniciarse cuando quiera).
+ * Client -> server: the player pressed "Start over" in the credits. The server only accepts it if
+ * the credits really are due (a client cannot start over whenever it wants).
  *
- * Formato: [VERSION] y luego los campos (ahora ninguno).
+ * Format: [VERSION] and then the fields (none for now).
  */
 class StartOverPacket : FabricPacket {
 

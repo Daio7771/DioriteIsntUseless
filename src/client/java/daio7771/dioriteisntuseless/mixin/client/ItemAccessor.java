@@ -6,9 +6,9 @@ import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
 /**
- * Permite cambiar la durabilidad máxima del Dioritine Axe en el cliente para que coincida con la
- * del servidor remoto (ver ClientConfigSync). Se cambia el campo una vez al recibir el paquete,
- * así que no añade trabajo a getMaxDamage, que se llama muchísimo.
+ * Lets the client change the maximum durability of the dioritine tools to match the remote
+ * server's (see ClientConfigSync). The field is changed once when the packet arrives, so it adds
+ * no work to getMaxDamage, which is called a huge number of times.
  */
 @Mixin(Item.class)
 public interface ItemAccessor {

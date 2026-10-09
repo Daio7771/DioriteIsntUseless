@@ -7,18 +7,18 @@ import net.fabricmc.fabric.api.networking.v1.PacketType
 import net.minecraft.network.FriendlyByteBuf
 
 /**
- * Servidor -> cliente: los valores de la configuración del servidor que el cliente también usa.
+ * Server -> client: the server config values the client uses too.
  *
- * - Diorita: el cliente calcula cuánto tarda en romperse un bloque con su propia dureza. Si no
- *   coincide con la del servidor, el bloque "se rompe" en pantalla y luego reaparece.
- * - Durabilidad del hacha y del pico (la de arranque del servidor): para que la barra del
- *   cliente cuadre.
- * - Árboles antes de romperse el hacha (versión 2) y picadas antes de romperse el pico
- *   (versión 3): también para la barra.
+ * - Diorite: the client works out how long a block takes to break with its own hardness. If it
+ *   does not match the server's, the block "breaks" on screen and then comes back.
+ * - Durability of the axe and the pickaxe (the server's startup value): so the client's bar
+ *   matches.
+ * - Trees before the axe breaks (version 2) and strikes before the pickaxe breaks (version 3):
+ *   also for the bar.
  *
- * Formato: [VERSION] y luego los campos. Las versiones futuras solo pueden AÑADIR campos al final;
- * un cliente antiguo lee los que conoce e ignora el resto, y uno nuevo que reciba una versión
- * antigua usa sus valores locales para los campos que falten.
+ * Format: [VERSION] and then the fields. Future versions may only ADD fields at the end; an old
+ * client reads the ones it knows and ignores the rest, and a new one that receives an old version
+ * uses its local values for the missing fields.
  */
 class ConfigSyncPacket(
     val diorite: DiuConfig.Diorite,
@@ -29,14 +29,14 @@ class ConfigSyncPacket(
 
     override fun write(buf: FriendlyByteBuf) {
         buf.writeVarInt(VERSION)
-        // Versión 1
+        // Version 1
         buf.writeBoolean(diorite.enabled)
         buf.writeFloat(diorite.hardness)
         buf.writeFloat(diorite.blastResistance)
         buf.writeVarInt(axeDurability)
-        // Versión 2
+        // Version 2
         buf.writeVarInt(treesBeforeBreaking)
-        // Versión 3
+        // Version 3
         buf.writeVarInt(strikesBeforeBreaking)
     }
 
@@ -48,7 +48,7 @@ class ConfigSyncPacket(
         val TYPE: PacketType<ConfigSyncPacket> = PacketType.create(Dioriteisntuseless.id("config_sync"), ::read)
 
         private fun read(buf: FriendlyByteBuf): ConfigSyncPacket {
-            // La versión 1 es la primera: todo paquete válido trae al menos sus campos.
+            // Version 1 is the first one: every valid packet has at least its fields.
             val version = buf.readVarInt()
             val packet = ConfigSyncPacket(
                 diorite = DiuConfig.Diorite(
@@ -57,12 +57,12 @@ class ConfigSyncPacket(
                     blastResistance = buf.readFloat(),
                 ),
                 axeDurability = buf.readVarInt(),
-                // Un servidor de la versión 1 no rompía el hacha por árboles: sin límite.
+                // A version 1 server did not break the axe by trees: no limit.
                 treesBeforeBreaking = if (version >= 2) buf.readVarInt() else 0,
-                // Un servidor sin pico no lo tiene: la barra usa la configuración local.
+                // A server without the pickaxe does not have it: the bar uses the local config.
                 strikesBeforeBreaking = if (version >= 3) buf.readVarInt() else 0,
             )
-            // Campos de versiones más nuevas del mod que esta no conoce.
+            // Fields from newer versions of the mod that this one does not know.
             buf.skipBytes(buf.readableBytes())
             return packet
         }

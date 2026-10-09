@@ -5,8 +5,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
 /**
- * Tiempo que le queda al nombre del ítem que flota sobre la barra rápida al cambiar de ítem.
- * NonsenseNames no cambia ningún nombre mientras se ve.
+ * Time left for the item name that floats above the hotbar when switching items.
+ * NonsenseNames does not change any name while it is visible.
  */
 @Mixin(Gui.class)
 public interface GuiAccessor {

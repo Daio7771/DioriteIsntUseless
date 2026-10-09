@@ -20,12 +20,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 
 /**
- * Yunque y herramientas de dioritina:
- * - Libros o combinar herramientas: solo acepta los encantamientos permitidos.
- * - Reparar con lingotes de dioritina reinicia la cuenta de árboles talados del hacha y la de
- *   picadas del pico (Mending no).
+ * Anvil and dioritine tools:
+ * - Books or combining tools: only the allowed enchantments are accepted.
+ * - Repairing with dioritine ingots resets the axe's count of felled trees and the pickaxe's count
+ *   of strikes (Mending does not).
  *
- * Hereda de ItemCombinerMenu solo para poder leer inputSlots.
+ * Extends ItemCombinerMenu only to be able to read inputSlots.
  */
 @Mixin(AnvilMenu.class)
 public abstract class AnvilMenuMixin extends ItemCombinerMenu {
@@ -38,9 +38,9 @@ public abstract class AnvilMenuMixin extends ItemCombinerMenu {
     }
 
     /**
-     * Cuánto repara el primer lingote. Vanilla no deja reparar una herramienta sin desgaste;
-     * aquí sí, si el hacha lleva árboles talados o el pico picadas, para que la cuenta se pueda
-     * reiniciar aunque Mending la tenga siempre a tope. Gasta un lingote, como una reparación normal.
+     * How much the first ingot repairs. Vanilla does not allow repairing a tool with no wear; here
+     * it does, if the axe has felled trees or the pickaxe has strikes, so the count can be reset
+     * even if Mending keeps it always full. It uses one ingot, like a normal repair.
      */
     @ModifyExpressionValue(
             method = "createResult",
@@ -52,14 +52,14 @@ public abstract class AnvilMenuMixin extends ItemCombinerMenu {
         return DioritineAxeItem.hasFelledTrees(tool) || DioritinePickaxeItem.hasStrikes(tool) ? 1 : repairAmount;
     }
 
-    /** El resultado de una reparación con lingotes sale con la cuenta de árboles o de picadas a 0. */
+    /** The result of a repair with ingots comes out with its count of trees or strikes at 0. */
     @ModifyArg(
             method = "createResult",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/ResultContainer;setItem(ILnet/minecraft/world/item/ItemStack;)V"),
             index = 1
     )
     private ItemStack dioriteisntuseless$resetTreesOnRepair(ItemStack result) {
-        // repairItemCountCost > 0 solo tras reparar con el material (no al combinar ni renombrar).
+        // repairItemCountCost > 0 only after repairing with the material (not when combining or renaming).
         if (this.repairItemCountCost > 0) {
             DioritineAxeItem.resetFelledTrees(result);
             DioritinePickaxeItem.resetStrikes(result);
@@ -68,8 +68,8 @@ public abstract class AnvilMenuMixin extends ItemCombinerMenu {
     }
 
     /**
-     * Un encantamiento no permitido cuenta como "no aplicable", igual que Sharpness en un pico:
-     * si el libro no trae nada aplicable, el yunque no da resultado.
+     * An enchantment that is not allowed counts as "not applicable", just like Sharpness on a
+     * pickaxe: if the book has nothing applicable, the anvil gives no result.
      */
     @WrapOperation(
             method = "createResult",
@@ -84,8 +84,8 @@ public abstract class AnvilMenuMixin extends ItemCombinerMenu {
     }
 
     /**
-     * Red de seguridad: en creativo vanilla da por aplicable cualquier encantamiento justo después
-     * de canEnchant. Aquí se quitan los no permitidos de lo que se escribe en el resultado.
+     * Safety net: in creative, vanilla treats any enchantment as applicable right after
+     * canEnchant. Here the ones that are not allowed are removed from what is written to the result.
      */
     @ModifyArg(
             method = "createResult",

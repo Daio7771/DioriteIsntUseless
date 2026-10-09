@@ -8,6 +8,6 @@ pluginManagement {
 }
 
 plugins {
-    // Descarga automáticamente el JDK 17 del toolchain si no está instalado.
+    // Automatically downloads the toolchain's JDK 17 if it is not installed.
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }

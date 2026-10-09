@@ -9,11 +9,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 /**
- * Pantallas que ocupan el lugar de otra justo antes de abrirse, para que la otra no se vea ni un
- * instante:
- * - La primera vez que se va a abrir el menú principal, la pantalla de aviso (que lleva después
- *   al menú).
- * - Cuando tocan los créditos del Abuse Mode, al abrir la pausa o acostarse (ver CreditsGate).
+ * Screens that take the place of another one right before it opens, so the other one is not seen
+ * even for an instant:
+ * - The first time the main menu is about to open, the warning screen (which then leads to the
+ *   menu).
+ * - When the Abuse Mode credits are due, on opening the pause menu or going to bed (see
+ *   CreditsGate).
  */
 @Mixin(Minecraft.class)
 public abstract class MinecraftMixin {

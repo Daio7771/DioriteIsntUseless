@@ -8,10 +8,10 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 
 /**
- * Lado del servidor de la sincronización: manda ConfigSyncPacket a cada jugador al entrar y a
- * todos después de cambiar la configuración. Llamar siempre desde el hilo del servidor.
+ * Server side of the sync: sends ConfigSyncPacket to each player on join and to everyone after
+ * the config changes. Always call from the server thread.
  *
- * A un cliente sin el mod el paquete no le hace nada (lo ignora).
+ * The packet does nothing to a client without the mod (it ignores it).
  */
 object ConfigSync {
 
@@ -19,7 +19,7 @@ object ConfigSync {
         ServerPlayConnectionEvents.JOIN.register { handler, _, _ -> send(handler.player) }
     }
 
-    /** Reenvía los valores a todos los jugadores conectados (tras /diu reload, por ejemplo). */
+    /** Sends the values again to every connected player (after /diu reload, for example). */
     fun broadcast(server: MinecraftServer) {
         val packet = packet()
         for (player in PlayerLookup.all(server)) {

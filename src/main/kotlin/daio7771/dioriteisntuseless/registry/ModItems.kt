@@ -20,8 +20,8 @@ object ModItems {
         Registry.register(BuiltInRegistries.ITEM, Dioriteisntuseless.id(name), item)
 
     /**
-     * Llamar desde onInitialize. Acceder al objeto ya registra los ítems de arriba
-     * (antes de que se congelen los registros); aquí solo se añaden a las pestañas creativas.
+     * Call from onInitialize. Accessing the object already registers the items above (before
+     * the registries are frozen); here they are only added to the creative tabs.
      */
     fun init() {
         ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.INGREDIENTS).register { entries ->

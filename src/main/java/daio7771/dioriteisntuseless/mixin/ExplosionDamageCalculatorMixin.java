@@ -10,13 +10,13 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Resistencia a explosiones de la diorita (diorite.blastResistance; vanilla 6).
+ * Blast resistance of diorite (diorite.blastResistance; vanilla 6).
  *
- * No se cambia Block.getExplosionResistance() de Blocks.DIORITE porque StairBlock devuelve la
- * resistencia de su bloque base, y las escaleras de diorita también subirían a 12. En su lugar
- * se cambia el valor donde el cálculo de explosiones lo lee, mirando el bloque que hay de verdad
- * en esa posición. Todas las explosiones vanilla (creeper, TNT, camas, cristales, wither...)
- * pasan por aquí.
+ * Block.getExplosionResistance() of Blocks.DIORITE is not changed because StairBlock returns the
+ * resistance of its base block, and diorite stairs would go up to 12 too. Instead the value is
+ * changed where the explosion calculation reads it, looking at the block that is really at that
+ * position. Every vanilla explosion (creeper, TNT, beds, end crystals, wither...) goes through
+ * here.
  */
 @Mixin(ExplosionDamageCalculator.class)
 public abstract class ExplosionDamageCalculatorMixin {

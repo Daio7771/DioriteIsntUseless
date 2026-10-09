@@ -11,16 +11,16 @@ import net.minecraft.world.item.crafting.ShapedRecipe
 import net.minecraft.world.item.crafting.SimpleCookingSerializer
 
 /**
- * Igual que el serializador vanilla de cocción, pero "result" es un objeto
- * `{"item": ..., "count": N}`. En 1.20.1 el vanilla solo admite el ID del ítem (siempre 1).
+ * Same as the vanilla cooking serializer, but "result" is an object `{"item": ..., "count": N}`.
+ * In 1.20.1 the vanilla one only accepts the item ID (always 1).
  *
- * Solo cambia la lectura del JSON: las recetas creadas son SmeltingRecipe/BlastingRecipe
- * vanilla, cuyo getSerializer() es el vanilla. Así la sincronización con el cliente (que ya
- * transmite el count) usa el código de Minecraft, y hornos, tolvas, libro de recetas y mods
- * como REI/JEI/EMI las tratan como fundición normal.
+ * Only the JSON reading changes: the recipes created are vanilla SmeltingRecipe/BlastingRecipe,
+ * whose getSerializer() is the vanilla one. That way the sync with the client (which already
+ * sends the count) uses Minecraft's own code, and furnaces, hoppers, the recipe book and mods
+ * like REI/JEI/EMI treat them as normal smelting.
  *
- * Para que el horno entregue el count completo también cuando la salida ya tiene ítems,
- * hace falta además AbstractFurnaceBlockEntityMixin.
+ * For the furnace to deliver the full count also when the output already has items,
+ * AbstractFurnaceBlockEntityMixin is needed as well.
  */
 class CountedCookingSerializer<T : AbstractCookingRecipe>(
     private val factory: CookieBaker<T>,
@@ -37,7 +37,7 @@ class CountedCookingSerializer<T : AbstractCookingRecipe>(
             if (GsonHelper.isArrayNode(json, "ingredient")) GsonHelper.getAsJsonArray(json, "ingredient")
             else GsonHelper.getAsJsonObject(json, "ingredient")
         val ingredient = Ingredient.fromJson(ingredientJson, false)
-        // Mismo formato que el resultado de las recetas de mesa: {"item": ..., "count": N}.
+        // Same format as the result of crafting table recipes: {"item": ..., "count": N}.
         val result = ShapedRecipe.itemStackFromJson(GsonHelper.getAsJsonObject(json, "result"))
         if (result.count > result.maxStackSize) {
             throw JsonSyntaxException("Result count ${result.count} exceeds max stack size ${result.maxStackSize}")

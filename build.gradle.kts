@@ -34,8 +34,8 @@ loom {
     }
 
     runs {
-        // El servidor en su propia carpeta: así cliente y servidor tienen cada uno su config/ y se
-        // puede probar la sincronización con valores distintos en cada lado.
+        // The server in its own folder: that way client and server each have their own config/ and
+        // the sync can be tested with different values on each side.
         named("server") {
             runDir = "run/server"
         }
@@ -68,21 +68,21 @@ dependencies {
 
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
 
-    // Cloth Config y Mod Menu son opcionales ("suggests" en fabric.mod.json): se compila contra
-    // ellas, pero el mod funciona sin ellas. Solo dan la pantalla de configuración.
+    // Cloth Config and Mod Menu are optional ("suggests" in fabric.mod.json): the mod is compiled
+    // against them, but works without them. They only provide the config screen.
     val clothConfig = "me.shedaniel.cloth:cloth-config-fabric:${project.property("cloth_config_version")}"
     val modMenu = "com.terraformersmc:modmenu:${project.property("modmenu_version")}"
     modCompileOnly(clothConfig) { exclude(group = "net.fabricmc.fabric-api") }
     modCompileOnly(modMenu) { exclude(group = "net.fabricmc.fabric-api") }
-    // Se cargan en runClient/runServer para probar la pantalla. Para probar sin ellas:
+    // They are loaded in runClient/runServer to test the screen. To test without them:
     // ./gradlew runClient -PnoOptionalMods
     if (!project.hasProperty("noOptionalMods")) {
         modLocalRuntime(clothConfig) { exclude(group = "net.fabricmc.fabric-api") }
         modLocalRuntime(modMenu) { exclude(group = "net.fabricmc.fabric-api") }
     }
 
-    // Common Protection API, también opcional: si está instalada (la traen los mods de claims),
-    // el Abuse Mode respeta sus zonas protegidas. Solo se compila contra ella.
+    // Common Protection API, optional too: if it is installed (claim mods bring it), the Abuse
+    // Mode respects their protected areas. The mod is only compiled against it.
     modCompileOnly("eu.pb4:common-protection-api:${project.property("common_protection_api_version")}") {
         exclude(group = "net.fabricmc.fabric-api")
     }

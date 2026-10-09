@@ -11,17 +11,17 @@ import net.minecraft.server.packs.PackType
 import net.minecraft.server.packs.resources.ResourceManager
 
 /**
- * Lista de textos de un archivo de datos del mod, por ejemplo:
+ * List of texts from one of the mod's data files, for example:
  *
  * ```
- * { "replace": false, "<key>": ["texto", "..."] }
+ * { "replace": false, "<key>": ["text", "..."] }
  * ```
  *
- * Como los tags: un datapack puede añadir textos, o sustituirlos todos con "replace": true.
- * Se recarga con /reload. Un archivo roto se ignora (con aviso en el log): nunca tumba el juego.
+ * Like tags: a datapack can add texts, or replace them all with "replace": true.
+ * Reloaded with /reload. A broken file is ignored (with a warning in the log): it never crashes the game.
  *
- * @param path ruta dentro de data/dioriteisntuseless/, por ejemplo "abuse/sign_words.json".
- * @param onLoad recibe los textos (sin repetir, en orden) cada vez que se cargan.
+ * @param path path inside data/dioriteisntuseless/, for example "abuse/sign_words.json".
+ * @param onLoad receives the texts (no duplicates, in order) every time they are loaded.
  */
 class TextListResource(path: String, private val key: String, private val onLoad: (List<String>) -> Unit) {
 
@@ -31,7 +31,7 @@ class TextListResource(path: String, private val key: String, private val onLoad
         ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(object : SimpleSynchronousResourceReloadListener {
             override fun getFabricId() = Dioriteisntuseless.id("text_list/${file.path}")
             override fun onResourceManagerReload(manager: ResourceManager) {
-                // Un fallo aquí haría fallar /reload o la carga del mundo: sin textos antes que eso.
+                // A failure here would make /reload or the world loading fail: better no texts than that.
                 try {
                     onLoad(read(manager))
                 } catch (e: Exception) {

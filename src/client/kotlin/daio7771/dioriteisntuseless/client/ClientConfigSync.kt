@@ -14,12 +14,12 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
 import net.minecraft.client.Minecraft
 
 /**
- * Lado del cliente de la sincronización. Conectado a un servidor remoto, el cliente usa los
- * valores del servidor (diorita y desgaste de las herramientas); al desconectarse vuelve a los suyos.
+ * Client side of the sync. Connected to a remote server, the client uses the server's values
+ * (diorite and tool wear); on disconnecting it goes back to its own.
  *
- * En un solo jugador (y en el anfitrión de una partida LAN) no se toca nada: cliente y servidor
- * integrado comparten la misma configuración y los mismos objetos, así que ya coinciden.
- * Todo se ejecuta en el hilo del cliente.
+ * In single player (and on the host of a LAN game) nothing is touched: the client and the
+ * integrated server share the same config and the same objects, so they already match.
+ * Everything runs on the client thread.
  */
 object ClientConfigSync {
 
@@ -34,20 +34,20 @@ object ClientConfigSync {
             useLocalValues()
             return
         }
-        // Un servidor con el mod manda sus valores justo después de entrar. Hasta entonces, y para
-        // siempre en un servidor sin el mod, la diorita es la vanilla, que es lo que usa el servidor.
+        // A server with the mod sends its values right after joining. Until then, and forever on a
+        // server without the mod, diorite is the vanilla one, which is what the server uses.
         DioriteStats.applyServerValues(DiuConfig.Diorite.VANILLA)
     }
 
     private fun onServerValues(packet: ConfigSyncPacket) {
         if (Minecraft.getInstance().hasSingleplayerServer()) return
-        // Una línea al entrar y otra por /diu reload: útil si alguien ve bloques que reaparecen.
+        // One line on join and another per /diu reload: useful if someone sees blocks coming back.
         LOGGER.info("Using the server's values: diorite {}, tool durability {}, trees before breaking {}, strikes before breaking {}.",
             packet.diorite, packet.axeDurability, packet.treesBeforeBreaking, packet.strikesBeforeBreaking)
         DioriteStats.applyServerValues(packet.diorite)
         setToolDurability(packet.axeDurability)
         DioritineAxeItem.serverTreesBeforeBreaking = packet.treesBeforeBreaking
-        // 0: servidor de antes del pico (no lo tiene); se usa la configuración local.
+        // 0: a server from before the pickaxe (it does not have it); the local config is used.
         DioritinePickaxeItem.serverStrikesBeforeBreaking = packet.strikesBeforeBreaking.takeIf { it > 0 }
     }
 
@@ -58,9 +58,9 @@ object ClientConfigSync {
         DioritinePickaxeItem.serverStrikesBeforeBreaking = null
     }
 
-    /** El hacha y el pico son del mismo material: misma durabilidad. */
+    /** The axe and the pickaxe are made of the same material: same durability. */
     private fun setToolDurability(durability: Int) {
-        // Con 0 o menos dejarían de gastarse: un servidor así está mal, se ignora.
+        // With 0 or less they would stop wearing out: such a server is wrong, so it is ignored.
         if (durability <= 0) return
         for (tool in listOf(ModItems.DIORITINE_AXE, ModItems.DIORITINE_PICKAXE)) {
             if (tool.maxDamage != durability) (tool as ItemAccessor).`dioriteisntuseless$setMaxDamage`(durability)

@@ -11,18 +11,18 @@ import net.minecraft.tags.TagKey
 import net.minecraft.world.item.Item
 
 /**
- * Nombres sin sentido (nivel 2 en adelante): algunos ítems del inventario del jugador se le
- * muestran con nombres como "IJD72B90DB23". El servidor elige los ítems y el cliente
- * (client.abuse.NonsenseNames) hace el resto; el ítem nunca cambia.
+ * Nonsense names (level 2 and up): some items in the player's inventory are shown to them with
+ * names like "IJD72B90DB23". The server picks the items and the client
+ * (client.abuse.NonsenseNames) does the rest; the item itself never changes.
  *
- * Nivel 2: un ítem y poco rato. Niveles 3 y 4: varios ítems y más rato.
+ * Level 2: one item for a short while. Levels 3 and 4: several items for longer.
  */
 object NonsenseNameSignal : AbuseSignal {
 
-    /** Ítems que nunca pierden su nombre (la diorita y sus variantes). Los del mod tampoco. */
+    /** Items that never lose their name (diorite and its variants). The mod's own items don't either. */
     val KEEPS_ITS_NAME: TagKey<Item> = TagKey.create(Registries.ITEM, Dioriteisntuseless.id("keeps_its_name"))
 
-    // Tiempo "a la vista" = ticks con un inventario o cofre abierto.
+    // Time "on screen" = ticks with an inventory or chest open.
     private const val LEVEL_2_EXPOSURE = 5 * 20
     private const val LEVEL_2_LIFETIME = 5 * 60 * 20
     private const val LEVEL_3_EXPOSURE = 30 * 20
@@ -32,7 +32,7 @@ object NonsenseNameSignal : AbuseSignal {
     override val id = "nonsense_names"
     override val minLevel = 2
 
-    /** En el final ya están todos los ítems cambiados ([everything]). */
+    /** At the ending every item is already renamed ([everything]). */
     override val maxLevel = 4
 
     fun keepsItsName(item: Item): Boolean =
@@ -44,7 +44,7 @@ object NonsenseNameSignal : AbuseSignal {
 
     override fun run(player: ServerPlayer, state: PlayerAbuse): Boolean {
         val candidates = candidates(player).toMutableList()
-        // Fisher-Yates con el azar del jugador.
+        // Fisher-Yates with the player's randomness.
         for (i in candidates.lastIndex downTo 1) {
             val j = player.random.nextInt(i + 1)
             candidates[i] = candidates[j].also { candidates[j] = candidates[i] }
@@ -59,14 +59,14 @@ object NonsenseNameSignal : AbuseSignal {
         return true
     }
 
-    /** Fase B del final: todos los ítems (salvo la diorita y los del mod) hasta "Start over". */
+    /** Phase B of the ending: every item (except diorite and the mod's own) until "Start over". */
     fun everything(player: ServerPlayer) {
         if (ServerPlayNetworking.canSend(player, NonsenseNamesPacket.TYPE)) {
             ServerPlayNetworking.send(player, NonsenseNamesPacket.everything())
         }
     }
 
-    /** Quita todos los nombres sin sentido de ese jugador. */
+    /** Removes every nonsense name of that player. */
     fun clear(player: ServerPlayer) {
         if (ServerPlayNetworking.canSend(player, NonsenseNamesPacket.TYPE)) {
             ServerPlayNetworking.send(player, NonsenseNamesPacket.clearAll())
@@ -74,9 +74,8 @@ object NonsenseNameSignal : AbuseSignal {
     }
 
     /**
-     * Ítems distintos que lleva encima (inventario, armadura y mano secundaria) y que pueden
-     * cambiar de nombre. Los que tienen nombre puesto en el yunque no: el yunque del cliente
-     * podría acabar guardando el nombre sin sentido de verdad.
+     * Distinct items they carry (inventory, armor and offhand) that can be renamed. Not the ones
+     * renamed on an anvil: the client's anvil could end up saving the nonsense name for real.
      */
     private fun candidates(player: ServerPlayer): Set<Item> {
         val inventory = player.inventory

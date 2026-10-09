@@ -6,17 +6,17 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 
 /**
- * "Diorite Is Useless" (fase A del final): para el jugador afectado, el hacha no tala, el pico no
- * pica 3x3 y no puede sacar cristales de diorita de la casilla de salida de un horno (el clic no hace nada; otros
- * jugadores y las tolvas sí pueden). Dura hasta "Start over", aunque se desactive el Abuse Mode
- * (desactivarlo no deshace lo hecho).
+ * "Diorite Is Useless" (phase A of the ending): for the affected player, the axe does not fell,
+ * the pickaxe does not mine 3x3 and they cannot take diorite crystals out of a furnace's output
+ * slot (the click does nothing; other players and hoppers still can). It lasts until
+ * "Start over", even if the Abuse Mode is disabled (disabling it does not undo what was done).
  *
- * El cliente también lo sabe (AbuseStateSync) para que el clic en el horno no haga nada en su
- * pantalla, en vez de coger el cristal y que luego vuelva a su sitio.
+ * The client knows too (AbuseStateSync) so the click on the furnace does nothing on their screen,
+ * instead of picking up the crystal and having it jump back.
  */
 object DioriteUselessness {
 
-    /** Valor que ha mandado el servidor a este cliente. Lo escribe el lado del cliente del mod. */
+    /** Value the server sent to this client. Written by the client side of the mod. */
     @Volatile
     @JvmStatic
     var clientFlag = false
@@ -29,10 +29,10 @@ object DioriteUselessness {
             clientFlag
         }
     } catch (e: Exception) {
-        false  // regla de oro 1: ante la duda, la diorita sigue siendo útil
+        false  // golden rule 1: when in doubt, diorite stays useful
     }
 
-    /** Para Slot.mayPickup en la salida de un horno. */
+    /** For Slot.mayPickup on a furnace output. */
     @JvmStatic
     fun blocksFurnaceTake(player: Player, stack: ItemStack): Boolean =
         stack.`is`(ModItems.DIORITE_CRYSTAL) && isUseless(player)

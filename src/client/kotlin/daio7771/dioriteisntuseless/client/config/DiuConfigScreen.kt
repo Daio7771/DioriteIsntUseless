@@ -12,8 +12,8 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 
 /**
- * Pantalla de configuración con Cloth Config. Es la única clase que usa Cloth Config: solo se
- * carga si Cloth Config está instalado (lo comprueba ModMenuIntegration).
+ * Config screen built with Cloth Config. It is the only class that uses Cloth Config: it is only
+ * loaded if Cloth Config is installed (ModMenuIntegration checks it).
  */
 object DiuConfigScreen {
 
@@ -22,7 +22,7 @@ object DiuConfigScreen {
     fun create(parent: Screen?): Screen {
         val current = ModConfig.current
         val defaults = DiuConfig()
-        // Cloth Config llama a los setSaveConsumer al guardar y después a setSavingRunnable.
+        // Cloth Config calls the setSaveConsumer callbacks on saving and then setSavingRunnable.
         var diorite = current.diorite
         var treeFelling = current.treeFelling
         var axe = current.axe
@@ -191,7 +191,7 @@ object DiuConfigScreen {
                     .setSaveConsumer { abuseMode = abuseMode.copy(enabled = it) }
                     .build()
             )
-            // Árboles y picadas por nivel: discretos, en una subsección plegada.
+            // Trees and strikes per level: tucked away, in a collapsed subsection.
             val advanced = entries.startSubCategory(text("abuseMode.advanced")).setExpanded(false)
             for (i in 0 until DiuConfig.AbuseMode.LEVELS) {
                 advanced += entries.startIntField(text("abuseMode.treesPerLevel", i + 1), current.abuseMode.treesPerLevel[i])
@@ -212,7 +212,7 @@ object DiuConfigScreen {
                 .setSaveConsumer { abuseMode = abuseMode.copy(treesUntilEnding = it) }
                 .build()
             for (i in 0 until DiuConfig.AbuseMode.STEPS) {
-                // La última cifra es la del final.
+                // The last number is the ending's.
                 val label = if (i < DiuConfig.AbuseMode.LEVELS) {
                     text("abuseMode.pickaxeSteps", i + 1)
                 } else {
@@ -232,7 +232,7 @@ object DiuConfigScreen {
         }
 
         builder.setSavingRunnable {
-            // Se parte de la configuración en vigor para no perder lo que no sale en la pantalla.
+            // Start from the config in effect so nothing that is not on the screen is lost.
             save(
                 ModConfig.current.copy(
                     diorite = diorite, treeFelling = treeFelling, axe = axe, pickaxe = pickaxe, abuseMode = abuseMode,
@@ -244,7 +244,7 @@ object DiuConfigScreen {
 
     private fun List<Int>.with(index: Int, value: Int): List<Int> = toMutableList().also { it[index] = value }
 
-    /** Escribe el JSON, aplica los cambios en caliente y, si hay partida LAN, avisa a los demás. */
+    /** Writes the JSON, applies the changes right away and, if there is a LAN game, tells the others. */
     private fun save(config: DiuConfig) {
         ModConfig.save(config)
         val server = Minecraft.getInstance().singleplayerServer ?: return

@@ -10,17 +10,17 @@ import net.minecraft.world.item.crafting.SmeltingRecipe
 
 object ModRecipes {
 
-    /** `"type": "dioriteisntuseless:smelting"`: como minecraft:smelting, pero con count en el resultado. */
+    /** `"type": "dioriteisntuseless:smelting"`: like minecraft:smelting, but with a count in the result. */
     val SMELTING: RecipeSerializer<SmeltingRecipe> =
         register("smelting", CountedCookingSerializer(::SmeltingRecipe, 200))
 
-    /** `"type": "dioriteisntuseless:blasting"`: como minecraft:blasting, pero con count en el resultado. */
+    /** `"type": "dioriteisntuseless:blasting"`: like minecraft:blasting, but with a count in the result. */
     val BLASTING: RecipeSerializer<BlastingRecipe> =
         register("blasting", CountedCookingSerializer(::BlastingRecipe, 100))
 
     private fun <T : RecipeSerializer<*>> register(name: String, serializer: T): T =
         Registry.register(BuiltInRegistries.RECIPE_SERIALIZER, Dioriteisntuseless.id(name), serializer)
 
-    /** Llamar desde onInitialize: acceder al objeto registra los serializadores de arriba. */
+    /** Call from onInitialize: accessing the object registers the serializers above. */
     fun init() = Unit
 }

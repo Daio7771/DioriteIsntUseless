@@ -3,39 +3,39 @@ package daio7771.dioriteisntuseless.block
 import daio7771.dioriteisntuseless.config.DiuConfig
 
 /**
- * Valores que el mod da a minecraft:diorite (solo a ese bloque; no a la diorita pulida,
- * losas, escaleras ni muros). Los aplican BlockStateBaseMixin y ExplosionDamageCalculatorMixin.
+ * Values the mod gives to minecraft:diorite (only that block; not polished diorite, slabs,
+ * stairs or walls). Applied by BlockStateBaseMixin and ExplosionDamageCalculatorMixin.
  *
- * Los mixins se llaman muchísimo, así que solo leen [active]: un campo volátil con una instancia
- * inmutable, sin bloqueos ni ningún otro trabajo. Las escrituras (raras) van sincronizadas.
+ * The mixins are called a huge number of times, so they only read [active]: a volatile field with
+ * an immutable instance, with no locks or any other work. Writes (rare) are synchronized.
  *
- * En un cliente conectado a un servidor remoto mandan los valores del servidor (ver
- * ConfigSyncPacket); si no, los de la configuración local. En un solo jugador cliente y servidor
- * integrado comparten esta clase y la misma configuración, así que siempre coinciden.
+ * On a client connected to a remote server the server's values apply (see ConfigSyncPacket);
+ * otherwise, the local config. In single player the client and the integrated server share this
+ * class and the same config, so they always match.
  */
 object DioriteStats {
 
     @Volatile
     private var active = DiuConfig.Diorite()
 
-    /** Valores de config/dioriteisntuseless.json. */
+    /** Values from config/dioriteisntuseless.json. */
     private var local = DiuConfig.Diorite()
 
-    /** Valores del servidor remoto al que está conectado este cliente, o null. */
+    /** Values of the remote server this client is connected to, or null. */
     @Volatile
     private var server: DiuConfig.Diorite? = null
 
-    /** true mientras se usan los valores de un servidor remoto en vez de los locales. */
+    /** true while the values of a remote server are used instead of the local ones. */
     val usingServerValues: Boolean get() = server != null
 
-    /** Dureza de minecraft:diorite. [original] es la vanilla, para cuando el cambio está desactivado. */
+    /** Hardness of minecraft:diorite. [original] is the vanilla one, for when the change is disabled. */
     @JvmStatic
     fun hardness(original: Float): Float {
         val values = active
         return if (values.enabled) values.hardness else original
     }
 
-    /** Resistencia a explosiones de minecraft:diorite. */
+    /** Blast resistance of minecraft:diorite. */
     @JvmStatic
     fun explosionResistance(original: Float): Float {
         val values = active

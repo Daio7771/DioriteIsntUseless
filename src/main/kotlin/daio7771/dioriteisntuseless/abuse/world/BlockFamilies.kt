@@ -10,23 +10,23 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.properties.BlockStateProperties
 
 /**
- * Familias de bloques que se pueden cambiar entre sí: cada tag de bloques
- * dioriteisntuseless:swap_family/<nombre> es una familia (data/dioriteisntuseless/tags/blocks/
- * swap_family/). Para añadir una, basta con un JSON nuevo, también desde un datapack.
+ * Families of blocks that can be swapped for one another: each block tag
+ * dioriteisntuseless:swap_family/<name> is a family (data/dioriteisntuseless/tags/blocks/
+ * swap_family/). Adding one only takes a new JSON file, from a datapack too.
  *
- * Además de estar en una familia, origen y destino tienen que ser bloques de construcción
- * simples y completos (ver [isSimpleFullBlock]): aunque alguien meta en un tag un cofre o un
- * bloque de redstone, nunca se cambia.
+ * Besides being in a family, both the original and the replacement have to be simple, full
+ * building blocks (see [isSimpleFullBlock]): even if someone puts a chest or a redstone block in
+ * a tag, it is never swapped.
  */
 object BlockFamilies {
 
     private const val PREFIX = "swap_family/"
 
     /**
-     * Para cada bloque de alguna familia, los demás bloques de su familia. Si un bloque está en
-     * varias, puede cambiar a cualquiera de todas ellas (la toba: a piedra o andesita, de la
-     * familia stone, y a pizarra profunda, de la familia deepslate). Se calcula cada vez (las
-     * señales son raras) para seguir los tags tras un /reload.
+     * For each block of some family, the other blocks of its family. If a block is in several,
+     * it can become any of them (tuff: stone or andesite, from the stone family, and deepslate,
+     * from the deepslate family). Computed every time (signals are rare) to follow the tags
+     * after a /reload.
      */
     fun alternatives(): Map<Block, List<Block>> {
         val result = HashMap<Block, LinkedHashSet<Block>>()
@@ -42,11 +42,11 @@ object BlockFamilies {
     }
 
     /**
-     * Bloque de construcción simple y completo: sin propiedades (nada de orientación, escaleras,
-     * losas, puertas, trampillas, raíles...), salvo el eje de bloques como la pizarra profunda,
-     * que no cambia lo que hace el bloque y se guarda con el original para "Start over". Sin
-     * entidad de bloque (cofres, hornos, carteles...), sin fluido, que no emite señal de redstone
-     * y con forma de cubo entero. La diorita nunca se toca.
+     * A simple, full building block: no properties (no facing, stairs, slabs, doors, trapdoors,
+     * rails...), except the axis of blocks like deepslate, which does not change what the block
+     * does and is saved with the original for "Start over". No block entity (chests, furnaces,
+     * signs...), no fluid, no redstone signal, and the shape of a full cube. Diorite is never
+     * touched.
      */
     fun isSimpleFullBlock(level: ServerLevel, pos: BlockPos, state: BlockState): Boolean =
         state.properties.all { it == BlockStateProperties.AXIS } &&

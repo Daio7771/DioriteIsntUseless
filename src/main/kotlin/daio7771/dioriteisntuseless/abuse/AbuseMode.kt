@@ -4,34 +4,34 @@ import daio7771.dioriteisntuseless.Dioriteisntuseless.Companion.LOGGER
 import daio7771.dioriteisntuseless.config.ModConfig
 
 /**
- * Interruptor general del Abuse Mode (ver docs/claudeplans/HORROR_DESIGN.md).
+ * Main switch of the Abuse Mode (see docs/claudeplans/HORROR_DESIGN.md).
  *
- * Regla de oro 1: nada del Abuse Mode puede tumbar el juego. Todo su código entra por [guard];
- * si algo falla, se registra en el log y el sistema se apaga hasta reiniciar el servidor (o
- * cerrar el mundo en un solo jugador). El resto del mod sigue funcionando.
+ * Golden rule 1: nothing in the Abuse Mode may crash the game. All of its code goes through
+ * [guard]; if something fails, it is logged and the system shuts down until the server restarts
+ * (or the world is closed in single player). The rest of the mod keeps working.
  */
 object AbuseMode {
 
-    /** Un error interno ha apagado el sistema en esta sesión. Solo se usa desde el hilo del servidor. */
+    /** An internal error has shut the system down for this session. Only used from the server thread. */
     private var failed = false
 
-    /** true si hay que contar y reaccionar: activado en la configuración y sin errores en esta sesión. */
+    /** true if it should count and react: enabled in the config and no errors in this session. */
     val active: Boolean get() = !failed && ModConfig.current.abuseMode.enabled
 
     /**
-     * Sin errores en esta sesión, esté activado o no. Deshacer ("Start over" y las restauraciones
-     * pendientes) solo necesita esto: desactivar el Abuse Mode no impide deshacer lo hecho.
+     * No errors in this session, whether it is enabled or not. Undoing ("Start over" and pending
+     * restorations) only needs this: disabling the Abuse Mode does not prevent undoing what was done.
      */
     val healthy: Boolean get() = !failed
 
-    /** Al arrancar cada servidor (también el integrado al abrir un mundo). */
+    /** When each server starts (also the integrated one when a world is opened). */
     fun resetSession() {
         failed = false
     }
 
     /**
-     * Ejecuta [block] y, si lanza algo, apaga el sistema. Es inline para que [block] pueda usar
-     * return. Los errores de la propia JVM (sin memoria, etc.) no se tragan.
+     * Runs [block] and, if it throws anything, shuts the system down. It is inline so [block] can
+     * use return. Errors of the JVM itself (out of memory, etc.) are not swallowed.
      */
     inline fun guard(what: String, block: () -> Unit) {
         try {

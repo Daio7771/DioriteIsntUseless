@@ -7,13 +7,13 @@ import net.minecraft.sounds.SoundSource
 import java.util.UUID
 
 /**
- * Pitidos del Morse (nivel 2 en adelante), sincronizados con el mensaje: cada punto y cada raya
- * se manda en su tick. Solo los oye el jugador afectado.
+ * Morse beeps (level 2 and up), in sync with the message: each dot and each dash is sent on its
+ * own tick. Only the affected player hears them.
  *
- * Ritmo estándar del Morse con una unidad de [UNIT_TICKS]: punto 1, raya 3, hueco entre señales 1,
- * entre letras 3 y entre palabras 7. Los .ogg duran exactamente un punto (100 ms) y una raya (300 ms).
+ * Standard Morse timing with a unit of [UNIT_TICKS]: dot 1, dash 3, gap between symbols 1,
+ * between letters 3 and between words 7. The .ogg files last exactly one dot (100 ms) and one dash (300 ms).
  *
- * Solo se usa desde el hilo del servidor.
+ * Only used from the server thread.
  */
 object MorseBeeper {
 
@@ -22,17 +22,17 @@ object MorseBeeper {
 
     private class Beep(val atTick: Int, val dash: Boolean)
 
-    /** Pitidos pendientes de cada jugador, en orden. */
+    /** Pending beeps of each player, in order. */
     private val pending = HashMap<UUID, ArrayDeque<Beep>>()
 
-    /** Empieza a pitar [code] (formato de MorseCode) para [player]; sustituye lo que estuviera sonando. */
+    /** Starts beeping [code] (MorseCode format) for [player]; replaces whatever was playing. */
     fun start(server: MinecraftServer, player: ServerPlayer, code: String) {
         val beeps = ArrayDeque<Beep>()
-        var tick = server.tickCount + UNIT_TICKS  // un instante después del mensaje
+        var tick = server.tickCount + UNIT_TICKS  // a moment after the message
         code.split(" / ").forEachIndexed { w, word ->
-            if (w > 0) tick += 6 * UNIT_TICKS  // con la 1 de fin de señal, 7 entre palabras
+            if (w > 0) tick += 6 * UNIT_TICKS  // with the 1 from the end of the symbol, 7 between words
             word.split(' ').forEachIndexed { l, letter ->
-                if (l > 0) tick += 2 * UNIT_TICKS  // con la 1 de fin de señal, 3 entre letras
+                if (l > 0) tick += 2 * UNIT_TICKS  // with the 1 from the end of the symbol, 3 between letters
                 for (symbol in letter) {
                     val dash = symbol == '-'
                     beeps += Beep(tick, dash)
@@ -50,7 +50,7 @@ object MorseBeeper {
             val (uuid, beeps) = iterator.next()
             val player = server.playerList.getPlayer(uuid)
             if (player == null) {
-                iterator.remove()  // se ha desconectado: el resto del mensaje se pierde
+                iterator.remove()  // they disconnected: the rest of the message is lost
                 continue
             }
             while (beeps.isNotEmpty() && beeps.first().atTick <= server.tickCount) {
@@ -61,12 +61,12 @@ object MorseBeeper {
         }
     }
 
-    /** Corta los pitidos de un jugador ("Start over"). */
+    /** Stops the beeps of one player ("Start over"). */
     fun stop(uuid: UUID) {
         pending.remove(uuid)
     }
 
-    /** Corta todos los pitidos (Abuse Mode desactivado, servidor parado...). */
+    /** Stops every beep (Abuse Mode disabled, server stopped...). */
     fun clear() {
         pending.clear()
     }

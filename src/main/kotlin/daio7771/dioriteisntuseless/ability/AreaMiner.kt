@@ -21,28 +21,28 @@ import net.minecraft.world.phys.AABB
 import java.util.UUID
 
 /**
- * Habilidad del Dioritine Pickaxe: al romper piedra o un mineral sin Shift, rompe también los
- * bloques de alrededor que sean piedra o mineral, en un cuadrado de 3x3 de frente a la cara
- * golpeada (pickaxe.sneakMode puede invertir lo del Shift).
+ * Ability of the Dioritine Pickaxe: when breaking stone or an ore without Shift, it also breaks the
+ * surrounding blocks that are stone or ore, in a 3x3 square facing the side that was hit
+ * (pickaxe.sneakMode can invert the Shift behavior).
  *
- * Como TreeFeller, se engancha a PlayerBlockBreakEvents.AFTER: el bloque golpeado ya no está y
- * vanilla aún no ha cobrado el pico ni soltado sus drops. Todo ocurre en el servidor lógico.
+ * Like TreeFeller, it hooks into PlayerBlockBreakEvents.AFTER: the block hit is already gone and
+ * vanilla has not charged the pickaxe nor dropped its items yet. Everything happens on the
+ * logical server.
  *
- * Cada bloque de alrededor gasta 1 de durabilidad (el golpeado lo cobra vanilla). Una picada que
- * rompe al menos pickaxe.minBlocksForStrike bloques, contando el golpeado, cuenta: para el límite
- * de picadas del pico y para el Abuse Mode. La configuración se lee una vez por golpe.
+ * Each surrounding block uses 1 durability (vanilla charges the one hit). A strike that breaks at
+ * least pickaxe.minBlocksForStrike blocks, counting the one hit, counts: for the pickaxe's strike
+ * limit and for the Abuse Mode. The config is read once per hit.
  */
 object AreaMiner {
 
-    /** Más que el alcance de cualquier jugador: solo sirve para saber qué cara se ha golpeado. */
+    /** More than any player's reach: it is only used to find out which side was hit. */
     private const val REACH = 8.0
 
     private val UNIT_CUBE = listOf(AABB(0.0, 0.0, 0.0, 1.0, 1.0, 1.0))
 
     /**
-     * Jugadores con una picada en curso. Los eventos de rotura que dispara la propia picada (para
-     * que otros mods puedan reaccionar) no deben volver a activar la habilidad. Solo se usa desde
-     * el hilo del servidor.
+     * Players with a strike in progress. The break events fired by the strike itself (so other
+     * mods can react) must not trigger the ability again. Only used from the server thread.
      */
     private val mining = HashSet<UUID>()
 
@@ -56,7 +56,7 @@ object AreaMiner {
         if (!pickaxe.`is`(ModItems.DIORITINE_PICKAXE) || !DioritinePickaxeItem.isMineable(state)) return
 
         val config = ModConfig.current.pickaxe
-        // Desactivado o en la fase A del final del Abuse Mode: pico normal, un bloque cada vez.
+        // Disabled, or in phase A of the Abuse Mode ending: a normal pickaxe, one block at a time.
         if (!config.enabled || DioriteUselessness.isUseless(player)) return
         if (!config.sneakMode.usesAbility(player.isShiftKeyDown)) return
 
@@ -66,7 +66,7 @@ object AreaMiner {
         } finally {
             mining -= player.uuid
         }
-        // Bordes y esquinas que rompen menos bloques gastan durabilidad, pero no son una picada.
+        // Edges and corners that break fewer blocks use durability, but are not a strike.
         if (extra + 1 >= config.minBlocksForStrike && !pickaxe.isEmpty) {
             DioritinePickaxeItem.addStrike(pickaxe, player)
             AbuseTracker.onStrike(player)
@@ -74,10 +74,10 @@ object AreaMiner {
     }
 
     /**
-     * Eje de la cara golpeada: el 3x3 va en el plano perpendicular (pared: vertical; suelo o
-     * techo: horizontal). El bloque ya es aire, así que se mira dónde corta la vista del jugador
-     * al cubo que ocupaba. Si no lo corta (la vista ha cambiado justo ahora), el eje hacia el que
-     * más mira.
+     * Axis of the side that was hit: the 3x3 goes in the perpendicular plane (wall: vertical;
+     * floor or ceiling: horizontal). The block is already air, so it checks where the player's
+     * line of sight crosses the cube it used to fill. If it does not cross it (the view just
+     * changed), the axis they are looking along the most.
      */
     private fun hitAxis(player: ServerPlayer, pos: BlockPos): Direction.Axis {
         val eye = player.eyePosition
@@ -85,7 +85,7 @@ object AreaMiner {
         return (hit?.direction ?: Direction.orderedByNearest(player)[0]).axis
     }
 
-    /** Rompe los 8 bloques de alrededor que pueda y devuelve cuántos ha roto. */
+    /** Breaks whichever of the 8 surrounding blocks it can and returns how many it broke. */
     private fun mineAround(
         level: ServerLevel,
         player: ServerPlayer,
@@ -97,7 +97,7 @@ object AreaMiner {
         val dropsAtOrigin = ArrayList<ItemStack>()
         var mined = 0
         for (pos in around(origin, axis)) {
-            // Sin durabilidad para uno más (el último punto es del golpeado) o ya roto: se para aquí.
+            // No durability for one more (the last point belongs to the block hit) or already broken: stop here.
             if (pickaxe.isEmpty || !DioritinePickaxeItem.canAffordExtraBlock(pickaxe, player)) break
             if (!level.isLoaded(pos) || !isMineableAt(level, pos, level.getBlockState(pos))) continue
             val drops = BlockBreaker.breakAsPlayer(level, player, pos, pickaxe) { isMineableAt(level, pos, it) } ?: continue
@@ -114,13 +114,13 @@ object AreaMiner {
     }
 
     /**
-     * Solo piedra y sus minerales (el tag del pico), y por si un datapack mete otra cosa en el tag:
-     * nada irrompible ni con entidad de bloque (cofres, hornos...).
+     * Only stone and its ores (the pickaxe's tag), and in case a datapack puts something else in
+     * the tag: nothing unbreakable nor with a block entity (chests, furnaces...).
      */
     private fun isMineableAt(level: ServerLevel, pos: BlockPos, state: BlockState): Boolean =
         DioritinePickaxeItem.isMineable(state) && !state.hasBlockEntity() && state.getDestroySpeed(level, pos) >= 0f
 
-    /** Los 8 bloques que rodean a [origin] en el plano perpendicular a [axis]. */
+    /** The 8 blocks around [origin] in the plane perpendicular to [axis]. */
     private fun around(origin: BlockPos, axis: Direction.Axis): List<BlockPos> {
         val result = ArrayList<BlockPos>(8)
         for (a in -1..1) for (b in -1..1) {

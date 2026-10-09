@@ -10,45 +10,45 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Sonidos de cueva de Minecraft (ambient.cave) mientras se abusa del mod, también en la superficie
- * talando árboles (decidido por Daio): a veces, unos segundos después de un árbol o de una picada.
- * Desde el nivel 1; cuanto más alto, más a menudo, pero siempre con un rato de silencio entre uno
- * y otro. El último suena al acabar el final, cuando se abren los créditos ([playFinal]).
+ * Minecraft cave sounds (ambient.cave) while the mod is being abused, also on the surface while
+ * felling trees (decided by Daio): sometimes, a few seconds after a tree or a strike. From level 1
+ * on; the higher the level, the more often, but always with a stretch of silence between one and
+ * the next. The last one plays when the ending is over, as the credits open ([playFinal]).
  *
- * Solo los oye el jugador afectado. Suenan a unos bloques de él, como los de las cuevas de verdad
- * y a un volumen parecido, en la categoría "Ambiente" (regla de oro 2: nada fuerte de golpe).
+ * Only the affected player hears them. They play a few blocks away, like real cave sounds and at
+ * a similar volume, in the "Ambient/Environment" category (golden rule 2: nothing loud and sudden).
  *
- * Solo se usa desde el hilo del servidor, a través de AbuseTracker y Ending (que ya van protegidos).
+ * Only used from the server thread, through AbuseTracker and Ending (which are already guarded).
  */
 object CaveSounds {
 
-    /** Probabilidad de que un árbol o una picada traiga un sonido, en los niveles 1 a 4. */
+    /** Chance that a tree or a strike brings a sound, at levels 1 to 4. */
     private val CHANCE = floatArrayOf(0.20f, 0.25f, 0.30f, 0.35f)
 
-    /** Silencio mínimo después de cada sonido, en ticks, en los niveles 1 a 4 (de 2 min a 1 min). */
+    /** Minimum silence after each sound, in ticks, at levels 1 to 4 (from 2 min down to 1 min). */
     private val QUIET_TICKS = longArrayOf(2_400L, 2_000L, 1_600L, 1_200L)
 
-    /** Del árbol o la picada al sonido (2 a 8 s), para que no parezca que lo causa. */
+    /** From the tree or strike to the sound (2 to 8 s), so it does not seem to be caused by it. */
     private val DELAY_TICKS = 40L..160L
 
-    /** Distancia al jugador, en bloques: dentro de lo que se oye (16), pero no encima. */
+    /** Distance from the player, in blocks: within hearing range (16), but not right on top. */
     private const val MIN_DISTANCE = 5.0
     private const val MAX_DISTANCE = 9.0
     private const val FINAL_DISTANCE = 4.0
     private const val VOLUME = 0.9f
 
     private class Timing {
-        /** Tick del servidor en que suena el próximo, o -1 si no hay ninguno en camino. */
+        /** Server tick at which the next one plays, or -1 if none is on its way. */
         var playAt = -1L
 
-        /** Hasta este tick del servidor, ninguno nuevo. */
+        /** No new one until this server tick. */
         var quietUntil = 0L
     }
 
-    /** No se guarda: al reiniciar el servidor (o cambiar de mundo) empieza de cero. */
+    /** Not saved: restarting the server (or switching worlds) starts from scratch. */
     private val timings = HashMap<UUID, Timing>()
 
-    /** Lo llama AbuseTracker con cada árbol y cada picada que cuenta. */
+    /** Called by AbuseTracker with every tree and every strike it counts. */
     fun onAbuseAction(player: ServerPlayer, state: PlayerAbuse) {
         val index = state.level - 1
         if (index !in CHANCE.indices) return
@@ -59,24 +59,24 @@ object CaveSounds {
         timing.quietUntil = timing.playAt + QUIET_TICKS[index]
     }
 
-    /** Desde el tick del jugador (cada segundo): si toca, suena. */
+    /** From the player tick (every second): plays it if it is due. */
     fun tick(player: ServerPlayer, state: PlayerAbuse) {
         val timing = timings[player.uuid] ?: return
         if (timing.playAt < 0 || player.server.tickCount < timing.playAt) return
         timing.playAt = -1
-        // Si entre tanto ha empezado de nuevo o ha llegado al final, ya no.
+        // Not if they have started over or reached the ending in the meantime.
         if (state.level in 1..AbuseTracker.MAX_LEVEL) {
             play(player, MIN_DISTANCE + player.random.nextDouble() * (MAX_DISTANCE - MIN_DISTANCE))
         }
     }
 
-    /** El último sonido del final, un poco más cerca, justo cuando tocan los créditos. */
+    /** The last sound of the ending, a bit closer, right when the credits are due. */
     fun playFinal(player: ServerPlayer) = play(player, FINAL_DISTANCE)
 
-    /** Abuse Mode desactivado o servidor que arranca: nada pendiente. */
+    /** Abuse Mode disabled or server starting: nothing pending. */
     fun clear() = timings.clear()
 
-    /** Uno de los sonidos de cueva (el cliente elige cuál con la semilla), a [distance] bloques. */
+    /** One of the cave sounds (the client picks which one from the seed), [distance] blocks away. */
     private fun play(player: ServerPlayer, distance: Double) {
         val random = player.random
         val angle = random.nextDouble() * 2 * PI

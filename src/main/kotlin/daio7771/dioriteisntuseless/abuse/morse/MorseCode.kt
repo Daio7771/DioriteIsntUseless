@@ -3,9 +3,9 @@ package daio7771.dioriteisntuseless.abuse.morse
 import java.util.Locale
 
 /**
- * Código Morse internacional. Las letras van separadas por un espacio y las palabras por " / "
+ * International Morse code. Letters are separated by a space and words by " / "
  * ("DELETE THIS MOD" -> "-.. . .-.. . - . / - .... .. ... / -- --- -..").
- * Se traduce todo, también la puntuación (la coma es --..--).
+ * Everything is translated, punctuation too (the comma is --..--).
  */
 object MorseCode {
 
@@ -23,10 +23,10 @@ object MorseCode {
         '"' to ".-..-.", '$' to "...-..-", '@' to ".--.-.",
     )
 
-    /** Variantes tipográficas que se escriben con el carácter de la tabla. */
+    /** Typographic variants that are written with the character from the table. */
     private val ALIASES: Map<Char, Char> = mapOf('’' to '\'', '‘' to '\'', '“' to '"', '”' to '"')
 
-    /** Resultado de [encode]: el Morse y los caracteres que no existen en Morse (se omiten). */
+    /** Result of [encode]: the Morse code and the characters that do not exist in Morse (left out). */
     class Encoded(val code: String, val unsupported: Set<Char>)
 
     fun encode(text: String): Encoded {

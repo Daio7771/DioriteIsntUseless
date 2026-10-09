@@ -11,9 +11,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Mientras suena el fondo del Abuse Mode, la música de Minecraft calla: la que suene se corta y no
- * empieza otra (decidido por Daio: el fondo manda). Cuando el fondo acaba, la música vuelve sola,
- * con la espera normal entre canciones.
+ * While the Abuse Mode background is playing, Minecraft's music stays silent: whatever is playing
+ * is cut and no new track starts (decided by Daio: the background rules). When the background
+ * ends, the music comes back on its own, with the normal wait between tracks.
  */
 @Mixin(MusicManager.class)
 public abstract class MusicManagerMixin {

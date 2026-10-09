@@ -6,43 +6,42 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.util.RandomSource
 
 /**
- * Mensajes de la fase B del final, en el chat y sin remitente, cada vez más raros. Uno cada 15 s:
+ * Phase B messages of the ending, in chat and without a sender, stranger each time. One every 15 s:
  *
- * 1. La frase tal cual.
- * 2. Las mismas palabras desordenadas, y alguna perdida (siempre igual, decidido por Daio).
- * 3 a 7. Desordenadas al azar, con cada vez más números, palabras perdidas y, al final, palabras
- *    cambiadas por USELESS.
+ * 1. The sentence as it is.
+ * 2. The same words shuffled, with one missing (always the same, decided by Daio).
+ * 3 to 7. Randomly shuffled, with more and more numbers, missing words and, at the end, words
+ *    replaced by USELESS.
  *
- * Y a los 2 minutos, "USELESS, USELESS, USELESS..." en rojo, una vez por segundo, 15 veces
- * (decidido por Daio). Un segundo después acaba la fase B: suena una última cueva y se abren los
- * créditos (Ending).
+ * And at 2 minutes, "USELESS, USELESS, USELESS..." in red, once per second, 15 times (decided by
+ * Daio). One second later phase B ends: one last cave sound plays and the credits open (Ending).
  *
- * Solo se usa desde el hilo del servidor, a través de Ending (que ya va protegido).
+ * Only used from the server thread, through Ending (which is already guarded).
  */
 object EndingMessages {
 
-    /** Entre los mensajes que cambian. */
+    /** Between the messages that change. */
     const val INTERVAL_TICKS = 300L
 
-    /** Mensajes que cambian, antes del último. */
+    /** Messages that change, before the last one. */
     private const val PHRASES = 7
 
-    /** Veces que se repite el último, una por segundo. */
+    /** Times the last one is repeated, once per second. */
     private const val LAST_REPEATS = 15
     private const val REPEAT_TICKS = 20L
 
-    /** El primer USELESS llega donde tocaría el octavo mensaje: a los 2 minutos. */
+    /** The first USELESS comes where the eighth message would: at 2 minutes. */
     private const val LAST_STARTS_AT = (PHRASES + 1) * INTERVAL_TICKS
 
     const val COUNT = PHRASES + LAST_REPEATS
 
-    /** Duración de la fase B: un segundo después del último USELESS (2 min 15 s). */
+    /** Length of phase B: one second after the last USELESS (2 min 15 s). */
     const val DURATION_TICKS = LAST_STARTS_AT + LAST_REPEATS * REPEAT_TICKS
 
     /**
-     * Un mensaje que ya tenía que haber llegado hace más de esto no se manda (datos guardados por
-     * otra versión del mod, por ejemplo): nada de soltarlos todos de golpe. Lo normal es que
-     * lleguen como mucho un segundo tarde.
+     * A message that was due more than this long ago is not sent (data saved by another version of
+     * the mod, for example): never dump them all at once. Normally they arrive at most one second
+     * late.
      */
     private const val LATE_TICKS = 40L
 
@@ -54,7 +53,7 @@ object EndingMessages {
     private val WORDS: List<String> = SENTENCE.lowercase().replace(",", "").split(' ')
     private val NUMBER_BOUNDS = intArrayOf(10, 100, 1_000, 10_000)
 
-    /** Desde Ending.tick: manda los mensajes que ya tocan (como mucho llegan un segundo tarde). */
+    /** From Ending.tick: sends the messages that are due (they arrive at most one second late). */
     fun tick(player: ServerPlayer, state: PlayerAbuse) {
         if (state.level != AbuseTracker.LEVEL_FINAL || state.endingStartedAt < 0) return
         val elapsed = state.playTicks - state.endingStartedAt
@@ -65,24 +64,24 @@ object EndingMessages {
         }
     }
 
-    /** Cuántos mensajes tendría que haber recibido ya según el tiempo jugado en la fase B. */
+    /** How many messages they should have received by now, going by the time played in phase B. */
     fun dueFor(state: PlayerAbuse): Int {
         if (state.endingStartedAt < 0) return 0
         val elapsed = state.playTicks - state.endingStartedAt
         return (0 until COUNT).count { dueAt(it) <= elapsed }
     }
 
-    /** Ticks desde el comienzo de la fase B hasta el mensaje número [index] (0 a COUNT - 1). */
+    /** Ticks from the start of phase B to message number [index] (0 to COUNT - 1). */
     private fun dueAt(index: Int): Long =
         if (index < PHRASES) (index + 1) * INTERVAL_TICKS else LAST_STARTS_AT + (index - PHRASES) * REPEAT_TICKS
 
     private fun send(player: ServerPlayer, index: Int) {
         val color = if (index >= PHRASES) ChatFormatting.DARK_RED else ChatFormatting.GRAY
-        // Mensaje de sistema: sin "<nombre>" delante, y no queda en el log del servidor.
+        // System message: no "<name>" in front, and it does not end up in the server log.
         player.sendSystemMessage(Component.literal(text(index, player.random)).withStyle(color))
     }
 
-    /** El mensaje número [index] (0 a COUNT - 1). */
+    /** Message number [index] (0 to COUNT - 1). */
     private fun text(index: Int, random: RandomSource): String = when (index) {
         0 -> SENTENCE
         1 -> SCRAMBLED
@@ -91,9 +90,9 @@ object EndingMessages {
     }
 
     /**
-     * La frase rota, de [level] 1 (mensaje 3) a 5 (mensaje 7): desordenada, sin hasta level / 2
-     * palabras, con [level] números al azar y, en los dos últimos, 1 y 2 palabras cambiadas por
-     * USELESS. La coma acaba en cualquier sitio.
+     * The broken sentence, from [level] 1 (message 3) to 5 (message 7): shuffled, missing up to
+     * level / 2 words, with [level] random numbers and, in the last two, 1 and 2 words replaced by
+     * USELESS. The comma ends up anywhere.
      */
     private fun broken(level: Int, random: RandomSource): String {
         val words = WORDS.toMutableList()
@@ -109,7 +108,7 @@ object EndingMessages {
         return words.joinToString(" ").replaceFirstChar { it.uppercaseChar() }
     }
 
-    /** Un número de 1 a 4 cifras. */
+    /** A number with 1 to 4 digits. */
     private fun number(random: RandomSource): String =
         random.nextInt(NUMBER_BOUNDS[random.nextInt(NUMBER_BOUNDS.size)]).toString()
 }

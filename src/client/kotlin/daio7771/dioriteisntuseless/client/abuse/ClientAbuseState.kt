@@ -5,14 +5,14 @@ import daio7771.dioriteisntuseless.network.AbuseStatePacket
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
 
-/** Lo que el servidor le cuenta a este cliente del Abuse Mode (ver AbuseStatePacket). */
+/** What the server tells this client about the Abuse Mode (see AbuseStatePacket). */
 object ClientAbuseState {
 
-    /** Tocan los créditos: CreditsGate los abre en el próximo momento tranquilo. */
+    /** The credits are due: CreditsGate opens them at the next calm moment. */
     @Volatile
     var creditsDue = false
 
-    /** Nivel del Abuse Mode (0 a 5; 0 si está desactivado): AbuseAmbience pone el fondo que toca. */
+    /** Abuse Mode level (0 to 5; 0 if disabled): AbuseAmbience plays the matching background. */
     @Volatile
     var level = 0
 

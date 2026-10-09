@@ -1,9 +1,9 @@
 package daio7771.dioriteisntuseless.config
 
 /**
- * Valores de config/dioriteisntuseless.json, ya validados. Es inmutable: para cambiar algo se
- * sustituye la instancia entera en ModConfig, así quien la lee nunca ve una mezcla de valores
- * viejos y nuevos.
+ * Values of config/dioriteisntuseless.json, already validated. It is immutable: to change anything
+ * the whole instance is replaced in ModConfig, so whoever reads it never sees a mix of old and new
+ * values.
  */
 data class DiuConfig(
     val diorite: Diorite = Diorite(),
@@ -13,98 +13,98 @@ data class DiuConfig(
     val abuseMode: AbuseMode = AbuseMode(),
     val client: Client = Client(),
 ) {
-    /** Se sincroniza con los clientes (ver ConfigSyncPacket). */
+    /** Synced to clients (see ConfigSyncPacket). */
     data class Diorite(
-        /** false: la diorita vuelve a los valores vanilla y se ignoran los otros dos. */
+        /** false: diorite goes back to the vanilla values and the other two are ignored. */
         val enabled: Boolean = true,
         val hardness: Float = 2.0f,
         val blastResistance: Float = 12.0f,
     ) {
         companion object {
-            /** Lo que hay en un servidor sin el mod. */
+            /** What a server without the mod has. */
             val VANILLA = Diorite(enabled = false)
         }
     }
 
     data class TreeFelling(
-        /** false: el hacha rompe solo el tronco golpeado y gasta 1 por tronco, como un hacha normal. */
+        /** false: the axe only breaks the log it hits and uses 1 per log, like a normal axe. */
         val enabled: Boolean = true,
-        /** Troncos como máximo por talada, contando el que golpea el jugador. */
+        /** Most logs per felling, counting the one the player hits. */
         val maxLogs: Int = 128,
-        /** Troncos que hay que romper para gastar 1 punto de durabilidad. */
+        /** Logs that have to be broken to use 1 durability point. */
         val logsPerDurabilityPoint: Int = 2,
-        /** true: todos los drops salen juntos en el tronco golpeado; false: cada uno en su sitio. */
+        /** true: all drops come out together at the log hit; false: each one where it was. */
         val dropsAtOrigin: Boolean = true,
         val sneakMode: SneakMode = SneakMode.SNEAK_DISABLES,
         /**
-         * Árboles enteros que tala un hacha antes de romperse; 0 = sin límite. Reparar en el
-         * yunque con lingotes reinicia la cuenta. Se sincroniza con los clientes (para la barra).
+         * Whole trees an axe fells before breaking; 0 = no limit. Repairing it on an anvil with
+         * ingots resets the count. Synced to clients (for the bar).
          */
         val treesBeforeBreaking: Int = 17,
     ) {
         companion object {
-            /** Valor por defecto hasta la versión 1 del archivo; ConfigCodec lo migra al nuevo. */
+            /** Default value up to version 1 of the file; ConfigCodec migrates it to the new one. */
             const val OLD_DEFAULT_TREES_BEFORE_BREAKING = 7
         }
     }
 
-    /** Vale para el hacha y para el pico: son del mismo material (DioritineTier). */
+    /** Applies to the axe and to the pickaxe: they are made of the same material (DioritineTier). */
     data class Axe(
-        /** Solo se aplica al arrancar: la durabilidad máxima se fija al registrar los ítems. */
+        /** Only applied at startup: the maximum durability is fixed when the items are registered. */
         val durability: Int = 1000,
-        /** true: solo Efficiency y Mending. */
+        /** true: only Efficiency and Mending. */
         val restrictEnchantments: Boolean = true,
     )
 
-    /** Ver docs/claudeplans/PICKAXE_DESIGN.md. */
+    /** See docs/claudeplans/PICKAXE_DESIGN.md. */
     data class Pickaxe(
-        /** false: el pico rompe solo el bloque golpeado, como un pico normal. */
+        /** false: the pickaxe only breaks the block it hits, like a normal pickaxe. */
         val enabled: Boolean = true,
         /**
-         * Picadas 3x3 que da un pico antes de romperse. Reparar en el yunque con lingotes reinicia
-         * la cuenta. Se sincroniza con los clientes (para la barra).
+         * 3x3 strikes a pickaxe makes before breaking. Repairing it on an anvil with ingots resets
+         * the count. Synced to clients (for the bar).
          */
         val strikesBeforeBreaking: Int = 10,
         val sneakMode: SneakMode = SneakMode.SNEAK_DISABLES,
-        /** true: todos los drops salen juntos en el bloque golpeado; false: cada uno en su sitio. */
+        /** true: all drops come out together at the block hit; false: each one where it was. */
         val dropsAtOrigin: Boolean = true,
-        /** Bloques que tiene que romper una picada, contando el golpeado, para contar como picada. */
+        /** Blocks a strike has to break, counting the one hit, to count as a strike. */
         val minBlocksForStrike: Int = 5,
     )
 
-    /** Ver docs/claudeplans/HORROR_DESIGN.md. Solo lo usa el servidor. */
+    /** See docs/claudeplans/HORROR_DESIGN.md. Only used by the server. */
     data class AbuseMode(
-        /** false: no se cuenta nada y no hay señales. No deshace lo ya hecho. */
+        /** false: nothing is counted and there are no signals. It does not undo what was done. */
         val enabled: Boolean = true,
         /**
-         * Árboles enteros que hay que talar con el hacha en cada nivel (0 a 3) para pasar al
-         * siguiente (1 a 4). Se cuentan desde que se llegó al nivel en que se está.
+         * Whole trees that have to be felled with the axe at each level (0 to 3) to reach the
+         * next one (1 to 4). Counted from the moment the current level was reached.
          */
         val treesPerLevel: List<Int> = listOf(17, 20, 22, 24),
-        /** Árboles enteros que hay que talar en el nivel 4 para llegar al final (además de EL cartel). */
+        /** Whole trees that have to be felled at level 4 to reach the ending (besides THE sign). */
         val treesUntilEnding: Int = 26,
         /**
-         * Picadas 3x3 con el pico que pide cada paso: subir a los niveles 1 a 4 y, la última, el
-         * final. Árboles y picadas se suman como fracciones (ver AbuseTracker.stepReached).
+         * 3x3 pickaxe strikes each step asks for: going up to levels 1 to 4 and, the last one, the
+         * ending. Trees and strikes add up as fractions (see AbuseTracker.stepReached).
          */
         val pickaxeSteps: List<Int> = listOf(10, 15, 15, 15, 15),
     ) {
         companion object {
-            /** Tamaño de treesPerLevel. */
+            /** Size of treesPerLevel. */
             const val LEVELS = 4
 
-            /** Tamaño de pickaxeSteps: los niveles y el final. */
+            /** Size of pickaxeSteps: the levels and the ending. */
             const val STEPS = LEVELS + 1
         }
     }
 
-    /** Solo cliente: no se sincroniza ni lo usa el servidor. */
+    /** Client only: not synced and not used by the server. */
     data class Client(
-        /** La pantalla de aviso ya se ha mostrado (solo se muestra una vez). */
+        /** The warning screen has already been shown (it is only shown once). */
         val warningShown: Boolean = false,
     )
 
-    /** Rangos admitidos. Los valores fuera de rango se ajustan al límite más cercano. */
+    /** Accepted ranges. Values out of range are moved to the nearest limit. */
     object Limits {
         val HARDNESS = 1.5f..50.0f
         val BLAST_RESISTANCE = 6.0f..1200.0f
@@ -119,12 +119,12 @@ data class DiuConfig(
     }
 }
 
-/** Si agacharse quita o pone la habilidad de la herramienta (talar el árbol entero, picar 3x3). */
+/** Whether sneaking turns the tool's ability (felling the whole tree, mining 3x3) off or on. */
 enum class SneakMode {
-    /** Sin agacharse se usa la habilidad; agachado, la herramienta rompe un solo bloque. */
+    /** Without sneaking the ability is used; while sneaking, the tool breaks a single block. */
     SNEAK_DISABLES,
 
-    /** Al revés: sin agacharse, un solo bloque; agachado se usa la habilidad. */
+    /** The other way round: without sneaking, a single block; while sneaking, the ability is used. */
     SNEAK_ENABLES;
 
     fun usesAbility(sneaking: Boolean): Boolean = if (this == SNEAK_DISABLES) !sneaking else sneaking

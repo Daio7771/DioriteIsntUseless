@@ -12,10 +12,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Fase A del final: el jugador afectado no puede sacar cristales de diorita de la salida de un
- * horno (ni con clic, ni Shift+clic, ni teclas numéricas, ni tirándolos: todo pasa por mayPickup).
- * FurnaceResultSlot no redefine mayPickup, así que se comprueba aquí; las demás casillas solo
- * pagan un instanceof.
+ * Phase A of the ending: the affected player cannot take diorite crystals out of a furnace output
+ * (not with a click, Shift+click, number keys or by throwing them: it all goes through mayPickup).
+ * FurnaceResultSlot does not override mayPickup, so it is checked here; every other slot only
+ * pays for an instanceof.
  */
 @Mixin(Slot.class)
 public abstract class SlotMixin {

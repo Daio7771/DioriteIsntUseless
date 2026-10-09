@@ -3,21 +3,21 @@ package daio7771.dioriteisntuseless.abuse.signal
 import daio7771.dioriteisntuseless.abuse.PlayerAbuse
 import net.minecraft.server.level.ServerPlayer
 
-/** Una de las señales del Abuse Mode (HORROR_DESIGN.md, apartado 4). La elige AbuseSignals. */
+/** One of the Abuse Mode signals (HORROR_DESIGN.md, section 4). Chosen by AbuseSignals. */
 interface AbuseSignal {
 
-    /** Identificador estable: se guarda para no repetir la misma señal dos veces seguidas. */
+    /** Stable identifier: saved so the same signal is not repeated twice in a row. */
     val id: String
 
-    /** Primer nivel en el que puede aparecer. */
+    /** First level at which it can appear. */
     val minLevel: Int
 
-    /** Último nivel en el que puede aparecer (el final es AbuseTracker.LEVEL_FINAL). */
+    /** Last level at which it can appear (the ending is AbuseTracker.LEVEL_FINAL). */
     val maxLevel: Int get() = Int.MAX_VALUE
 
-    /** false si ahora no puede ocurrir por algo barato de comprobar (por ejemplo, no hay frases). */
+    /** false if it cannot happen right now for a reason that is cheap to check (for example, no phrases). */
     fun canRun(player: ServerPlayer, state: PlayerAbuse): Boolean = true
 
-    /** Lanza la señal. False si al final no ha ocurrido nada (por ejemplo, no había sitio). */
+    /** Fires the signal. False if nothing happened in the end (for example, there was no room). */
     fun run(player: ServerPlayer, state: PlayerAbuse): Boolean
 }

@@ -13,12 +13,12 @@ import net.minecraft.server.level.ServerPlayer
 import kotlin.math.sqrt
 
 /**
- * Bloques que cambian (nivel 3 en adelante): el jugador vuelve a mirar una pared y ya no es igual.
+ * Blocks that change (level 3 and up): the player looks at a wall again and it is not the same.
  *
- * Unos pocos bloques de construcción (1–4; en el final, 4–12) a 8–24 bloques del jugador
- * cambian por otro de su familia (BlockFamilies). Solo bloques con alguna cara al aire (los que
- * se pueden ver), nunca a la vista de nadie, respetando las protecciones, y siempre registrados
- * para "Start over".
+ * A few building blocks (1–4; at the ending, 4–12) 8–24 blocks away from the player are swapped
+ * for another one of their family (BlockFamilies). Only blocks with some face exposed to air
+ * (the ones that can be seen), never in anyone's sight, respecting protections, and always
+ * recorded for "Start over".
  */
 object BlockSwapSignal : AbuseSignal {
 
@@ -27,7 +27,7 @@ object BlockSwapSignal : AbuseSignal {
     private val LEVEL_3_BLOCKS = 1..4
     private val FINAL_BLOCKS = 4..12
 
-    /** Posiciones al azar que se miran como mucho por señal. */
+    /** Most random positions looked at per signal. */
     private const val ATTEMPTS = 600
 
     override val id = "block_swap"
@@ -46,7 +46,7 @@ object BlockSwapSignal : AbuseSignal {
         for (attempt in 0 until ATTEMPTS) {
             if (changed >= wanted) break
             val max = MAX_DISTANCE.toInt()
-            // Un poco más hacia arriba que hacia abajo: paredes, no el subsuelo.
+            // A bit more upwards than downwards: walls, not the underground.
             pos.set(origin.x + random.nextInt(2 * max + 1) - max, origin.y + random.nextInt(19) - 6, origin.z + random.nextInt(2 * max + 1) - max)
             val distance = sqrt(pos.distSqr(origin))
             if (distance < MIN_DISTANCE || distance > MAX_DISTANCE || !level.isLoaded(pos)) continue
@@ -62,8 +62,8 @@ object BlockSwapSignal : AbuseSignal {
     }
 
     /**
-     * Tiene alguna cara que se puede ver (al lado de aire, cristal, plantas...). Los vecinos en
-     * chunks sin cargar no cuentan: leerlos obligaría a cargar el chunk.
+     * It has some face that can be seen (next to air, glass, plants...). Neighbors in unloaded
+     * chunks don't count: reading them would force the chunk to load.
      */
     private fun isExposed(level: ServerLevel, pos: BlockPos): Boolean = Direction.entries.any {
         val neighbor = pos.relative(it)
