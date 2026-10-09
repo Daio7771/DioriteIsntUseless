@@ -1,5 +1,6 @@
 package daio7771.dioriteisntuseless.client
 
+import daio7771.dioriteisntuseless.client.abuse.AbuseAmbience
 import daio7771.dioriteisntuseless.client.abuse.ClientAbuseState
 import daio7771.dioriteisntuseless.client.abuse.CreditsGate
 import daio7771.dioriteisntuseless.client.abuse.NonsenseNames
@@ -12,5 +13,6 @@ class DioriteisntuselessClient : ClientModInitializer {
         NonsenseNames.init()
         ClientAbuseState.init()
         CreditsGate.init()
+        AbuseAmbience.init()
     }
 }

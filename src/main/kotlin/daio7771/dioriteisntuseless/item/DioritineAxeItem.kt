@@ -3,9 +3,7 @@ package daio7771.dioriteisntuseless.item
 import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.registry.ModItems
 import net.minecraft.core.BlockPos
-import net.minecraft.stats.Stats
 import net.minecraft.tags.BlockTags
-import net.minecraft.util.Mth
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
@@ -14,7 +12,6 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.state.BlockState
-import kotlin.math.min
 
 /**
  * Hacha de dioritina: muy buena con la madera e inútil para todo lo demás.
@@ -42,20 +39,13 @@ class DioritineAxeItem(properties: Item.Properties) :
 
     override fun isBarVisible(stack: ItemStack): Boolean = stack.isDamaged || remainingTreesFraction(stack) < 1f
 
-    override fun getBarWidth(stack: ItemStack): Int = Math.round(remainingFraction(stack) * 13f)
+    override fun getBarWidth(stack: ItemStack): Int = ToolWear.barWidth(remainingFraction(stack))
 
-    override fun getBarColor(stack: ItemStack): Int = Mth.hsvToRgb(remainingFraction(stack) / 3f, 1f, 1f)
+    override fun getBarColor(stack: ItemStack): Int = ToolWear.barColor(remainingFraction(stack))
 
-    private fun remainingFraction(stack: ItemStack): Float {
-        val durability = (stack.maxDamage - stack.damageValue).toFloat() / stack.maxDamage
-        return min(durability, remainingTreesFraction(stack)).coerceIn(0f, 1f)
-    }
+    private fun remainingFraction(stack: ItemStack): Float = ToolWear.remainingFraction(stack, remainingTreesFraction(stack))
 
-    private fun remainingTreesFraction(stack: ItemStack): Float {
-        val limit = treesBeforeBreaking()
-        if (limit <= 0) return 1f
-        return (limit - felledTrees(stack)).toFloat() / limit
-    }
+    private fun remainingTreesFraction(stack: ItemStack): Float = ToolWear.remainingUses(felledTrees(stack), treesBeforeBreaking())
 
     companion object {
         // Se suman a los valores base del jugador: 1.0 de daño y 4.0 de velocidad de ataque.
@@ -126,12 +116,7 @@ class DioritineAxeItem(properties: Item.Properties) :
                 stack.orCreateTag.putInt(TREES_TAG, trees)
                 return
             }
-            // Lo mismo que hace vanilla cuando una herramienta se queda sin durabilidad.
-            player.broadcastBreakEvent(EquipmentSlot.MAINHAND)
-            val item = stack.item
-            stack.shrink(1)
-            player.awardStat(Stats.ITEM_BROKEN.get(item))
-            stack.damageValue = 0
+            ToolWear.breakInMainHand(stack, player)
         }
     }
 }

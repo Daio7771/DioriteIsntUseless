@@ -138,10 +138,34 @@ AXE_GRID = [
     ".wwww...........",
 ]
 
+# Pico de dioritina: los mismos materiales que el hacha. La cabeza es simétrica respecto al mango
+# (la diagonal x + y = 15); las sombras no, porque la luz viene de arriba a la izquierda.
+PICKAXE = AXE
+
+PICKAXE_GRID = [
+    "................",
+    "...OOOOOO.......",
+    "..OHHLSLMOO.....",
+    ".OPddddMLLLOO...",
+    ".OdOOOOOdMMLO...",
+    ".OO.....OOMMLO..",
+    "........wlOLdO..",
+    ".......wlbOLMdO.",
+    "......wlbw.OLdO.",
+    ".....wlbw..OLdO.",
+    "....wlbw...OSdO.",
+    "...wlbw....OLdO.",
+    "..wlbw.....OMdO.",
+    ".wlbw.....OMDO..",
+    "wlbw......OOO...",
+    "www.............",
+]
+
 ITEMS = {
     "diorite_crystal": (CRYSTAL_GRID, CRYSTAL),
     "dioritine_ingot": (INGOT_GRID, INGOT),
     "dioritine_axe": (AXE_GRID, AXE),
+    "dioritine_pickaxe": (PICKAXE_GRID, PICKAXE),
 }
 
 

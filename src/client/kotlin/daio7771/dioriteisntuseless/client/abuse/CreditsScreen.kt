@@ -17,7 +17,7 @@ import net.minecraft.util.Mth
  * jugador.
  *
  * @param next la pantalla que iba a abrirse (pausa o cama), a la que se vuelve si se cierra con
- *   Escape sin empezar de nuevo.
+ *   Escape sin empezar de nuevo; null si se han abierto solos (se vuelve al juego).
  */
 class CreditsScreen(private val next: Screen?) : Screen(Component.translatable("$LANG.3")) {
 

@@ -6,5 +6,25 @@
   "morse.dash": {
     "subtitle": "subtitles.dioriteisntuseless.morse",
     "sounds": ["dioriteisntuseless:morse/dash"]
+  },
+  "ambience.level1": {
+    "subtitle": "subtitles.dioriteisntuseless.ambience",
+    "sounds": [{ "name": "dioriteisntuseless:ambience/level1", "stream": true }]
+  },
+  "ambience.level2": {
+    "subtitle": "subtitles.dioriteisntuseless.ambience",
+    "sounds": [{ "name": "dioriteisntuseless:ambience/level2", "stream": true }]
+  },
+  "ambience.level3": {
+    "subtitle": "subtitles.dioriteisntuseless.ambience",
+    "sounds": [{ "name": "dioriteisntuseless:ambience/level3", "stream": true }]
+  },
+  "ambience.level4": {
+    "subtitle": "subtitles.dioriteisntuseless.ambience",
+    "sounds": [{ "name": "dioriteisntuseless:ambience/level4", "stream": true }]
+  },
+  "ambience.final": {
+    "subtitle": "subtitles.dioriteisntuseless.ambience",
+    "sounds": [{ "name": "dioriteisntuseless:ambience/final", "stream": true }]
   }
 }

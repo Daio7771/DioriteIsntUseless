@@ -33,6 +33,9 @@ object ConfigSync {
 
     private fun packet(): ConfigSyncPacket {
         val config = ModConfig.current
-        return ConfigSyncPacket(config.diorite, ModConfig.axeDurabilityAtStartup, config.treeFelling.treesBeforeBreaking)
+        return ConfigSyncPacket(
+            config.diorite, ModConfig.axeDurabilityAtStartup,
+            config.treeFelling.treesBeforeBreaking, config.pickaxe.strikesBeforeBreaking,
+        )
     }
 }

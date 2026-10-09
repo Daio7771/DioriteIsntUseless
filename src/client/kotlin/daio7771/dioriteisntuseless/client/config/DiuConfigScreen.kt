@@ -26,6 +26,7 @@ object DiuConfigScreen {
         var diorite = current.diorite
         var treeFelling = current.treeFelling
         var axe = current.axe
+        var pickaxe = current.pickaxe
         var abuseMode = current.abuseMode
 
         val builder = ConfigBuilder.create()
@@ -138,6 +139,50 @@ object DiuConfigScreen {
             )
         }
 
+        builder.getOrCreateCategory(text("category.pickaxe")).apply {
+            addEntry(
+                entries.startBooleanToggle(text("pickaxe.enabled"), current.pickaxe.enabled)
+                    .setDefaultValue(defaults.pickaxe.enabled)
+                    .setTooltip(text("pickaxe.enabled.tooltip"))
+                    .setSaveConsumer { pickaxe = pickaxe.copy(enabled = it) }
+                    .build()
+            )
+            addEntry(
+                entries.startBooleanToggle(text("pickaxe.dropsAtOrigin"), current.pickaxe.dropsAtOrigin)
+                    .setDefaultValue(defaults.pickaxe.dropsAtOrigin)
+                    .setTooltip(text("pickaxe.dropsAtOrigin.tooltip"))
+                    .setSaveConsumer { pickaxe = pickaxe.copy(dropsAtOrigin = it) }
+                    .build()
+            )
+            addEntry(
+                entries.startEnumSelector(text("pickaxe.sneakMode"), SneakMode::class.java, current.pickaxe.sneakMode)
+                    .setDefaultValue(defaults.pickaxe.sneakMode)
+                    .setEnumNameProvider { text("pickaxe.sneakMode.${it.name}") }
+                    .setTooltip(text("pickaxe.sneakMode.tooltip"))
+                    .setSaveConsumer { pickaxe = pickaxe.copy(sneakMode = it) }
+                    .build()
+            )
+            addEntry(
+                entries.startIntField(text("pickaxe.strikesBeforeBreaking"), current.pickaxe.strikesBeforeBreaking)
+                    .setDefaultValue(defaults.pickaxe.strikesBeforeBreaking)
+                    .setMin(DiuConfig.Limits.STRIKES_BEFORE_BREAKING.first)
+                    .setMax(DiuConfig.Limits.STRIKES_BEFORE_BREAKING.last)
+                    .setTooltip(text("pickaxe.strikesBeforeBreaking.tooltip"))
+                    .setSaveConsumer { pickaxe = pickaxe.copy(strikesBeforeBreaking = it) }
+                    .build()
+            )
+            addEntry(
+                entries.startIntSlider(
+                    text("pickaxe.minBlocksForStrike"), current.pickaxe.minBlocksForStrike,
+                    DiuConfig.Limits.MIN_BLOCKS_FOR_STRIKE.first, DiuConfig.Limits.MIN_BLOCKS_FOR_STRIKE.last,
+                )
+                    .setDefaultValue(defaults.pickaxe.minBlocksForStrike)
+                    .setTooltip(text("pickaxe.minBlocksForStrike.tooltip"))
+                    .setSaveConsumer { pickaxe = pickaxe.copy(minBlocksForStrike = it) }
+                    .build()
+            )
+        }
+
         builder.getOrCreateCategory(text("category.abuseMode")).apply {
             addEntry(
                 entries.startBooleanToggle(text("abuseMode.enabled"), current.abuseMode.enabled)
@@ -146,7 +191,7 @@ object DiuConfigScreen {
                     .setSaveConsumer { abuseMode = abuseMode.copy(enabled = it) }
                     .build()
             )
-            // Árboles por nivel: discretos, en una subsección plegada.
+            // Árboles y picadas por nivel: discretos, en una subsección plegada.
             val advanced = entries.startSubCategory(text("abuseMode.advanced")).setExpanded(false)
             for (i in 0 until DiuConfig.AbuseMode.LEVELS) {
                 advanced += entries.startIntField(text("abuseMode.treesPerLevel", i + 1), current.abuseMode.treesPerLevel[i])
@@ -166,12 +211,33 @@ object DiuConfigScreen {
                 .setTooltip(text("abuseMode.treesUntilEnding.tooltip"))
                 .setSaveConsumer { abuseMode = abuseMode.copy(treesUntilEnding = it) }
                 .build()
+            for (i in 0 until DiuConfig.AbuseMode.STEPS) {
+                // La última cifra es la del final.
+                val label = if (i < DiuConfig.AbuseMode.LEVELS) {
+                    text("abuseMode.pickaxeSteps", i + 1)
+                } else {
+                    text("abuseMode.pickaxeStepsFinal")
+                }
+                advanced += entries.startIntField(label, current.abuseMode.pickaxeSteps[i])
+                    .setDefaultValue(defaults.abuseMode.pickaxeSteps[i])
+                    .setMin(DiuConfig.Limits.ABUSE_STRIKES.first)
+                    .setMax(DiuConfig.Limits.ABUSE_STRIKES.last)
+                    .setTooltip(text("abuseMode.pickaxeSteps.tooltip"))
+                    .setSaveConsumer { value ->
+                        abuseMode = abuseMode.copy(pickaxeSteps = abuseMode.pickaxeSteps.with(i, value))
+                    }
+                    .build()
+            }
             addEntry(advanced.build())
         }
 
         builder.setSavingRunnable {
             // Se parte de la configuración en vigor para no perder lo que no sale en la pantalla.
-            save(ModConfig.current.copy(diorite = diorite, treeFelling = treeFelling, axe = axe, abuseMode = abuseMode))
+            save(
+                ModConfig.current.copy(
+                    diorite = diorite, treeFelling = treeFelling, axe = axe, pickaxe = pickaxe, abuseMode = abuseMode,
+                )
+            )
         }
         return builder.build()
     }

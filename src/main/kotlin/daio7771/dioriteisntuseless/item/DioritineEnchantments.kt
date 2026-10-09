@@ -7,10 +7,10 @@ import net.minecraft.world.item.enchantment.Enchantment
 import net.minecraft.world.item.enchantment.Enchantments
 
 /**
- * Encantamientos permitidos en el Dioritine Axe: solo Efficiency y Mending, por cualquier vía.
- * La consultan los mixins de la mesa de encantar, el yunque y el comando /enchant.
- * El resto de ítems no se ven afectados. Con axe.restrictEnchantments = false, el hacha acepta
- * los mismos encantamientos que un hacha vanilla.
+ * Encantamientos permitidos en el hacha y el pico de dioritina: solo Efficiency y Mending, por
+ * cualquier vía. La consultan los mixins de la mesa de encantar, el yunque y el comando /enchant.
+ * El resto de ítems no se ven afectados. Con axe.restrictEnchantments = false, aceptan los mismos
+ * encantamientos que un hacha o un pico vanilla.
  */
 object DioritineEnchantments {
 
@@ -19,7 +19,7 @@ object DioritineEnchantments {
     /** true si el ítem tiene la lista de encantamientos restringida. */
     @JvmStatic
     fun isRestricted(stack: ItemStack): Boolean =
-        stack.`is`(ModItems.DIORITINE_AXE) && ModConfig.current.axe.restrictEnchantments
+        (stack.`is`(ModItems.DIORITINE_AXE) || stack.`is`(ModItems.DIORITINE_PICKAXE)) && ModConfig.current.axe.restrictEnchantments
 
     @JvmStatic
     fun isAllowed(stack: ItemStack, enchantment: Enchantment): Boolean =

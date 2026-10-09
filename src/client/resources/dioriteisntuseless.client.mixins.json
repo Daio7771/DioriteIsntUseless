@@ -7,7 +7,8 @@
     "GuiAccessor",
     "ItemAccessor",
     "ItemStackMixin",
-    "MinecraftMixin"
+    "MinecraftMixin",
+    "MusicManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

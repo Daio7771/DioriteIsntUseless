@@ -12,14 +12,20 @@ object ClientAbuseState {
     @Volatile
     var creditsDue = false
 
+    /** Nivel del Abuse Mode (0 a 5; 0 si está desactivado): AbuseAmbience pone el fondo que toca. */
+    @Volatile
+    var level = 0
+
     fun init() {
         ClientPlayNetworking.registerGlobalReceiver(AbuseStatePacket.TYPE) { packet, _, _ ->
             DioriteUselessness.clientFlag = packet.dioriteUseless
             creditsDue = packet.creditsDue
+            level = packet.level
         }
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
             DioriteUselessness.clientFlag = false
             creditsDue = false
+            level = 0
         }
     }
 }

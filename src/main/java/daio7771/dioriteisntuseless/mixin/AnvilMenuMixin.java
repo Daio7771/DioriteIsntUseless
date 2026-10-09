@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import daio7771.dioriteisntuseless.item.DioritineAxeItem;
 import daio7771.dioriteisntuseless.item.DioritineEnchantments;
+import daio7771.dioriteisntuseless.item.DioritinePickaxeItem;
 import java.util.Map;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AnvilMenu;
@@ -19,9 +20,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 
 /**
- * Yunque y Dioritine Axe:
- * - Libros o combinar hachas: solo acepta los encantamientos permitidos.
- * - Reparar con lingotes de dioritina reinicia la cuenta de árboles talados (Mending no).
+ * Yunque y herramientas de dioritina:
+ * - Libros o combinar herramientas: solo acepta los encantamientos permitidos.
+ * - Reparar con lingotes de dioritina reinicia la cuenta de árboles talados del hacha y la de
+ *   picadas del pico (Mending no).
  *
  * Hereda de ItemCombinerMenu solo para poder leer inputSlots.
  */
@@ -37,8 +39,8 @@ public abstract class AnvilMenuMixin extends ItemCombinerMenu {
 
     /**
      * Cuánto repara el primer lingote. Vanilla no deja reparar una herramienta sin desgaste;
-     * aquí sí, si el hacha lleva árboles talados, para que la cuenta se pueda reiniciar aunque
-     * Mending la tenga siempre a tope. Gasta un lingote, como una reparación normal.
+     * aquí sí, si el hacha lleva árboles talados o el pico picadas, para que la cuenta se pueda
+     * reiniciar aunque Mending la tenga siempre a tope. Gasta un lingote, como una reparación normal.
      */
     @ModifyExpressionValue(
             method = "createResult",
@@ -46,10 +48,11 @@ public abstract class AnvilMenuMixin extends ItemCombinerMenu {
     )
     private int dioriteisntuseless$repairToResetTrees(int repairAmount) {
         if (repairAmount > 0) return repairAmount;
-        return DioritineAxeItem.hasFelledTrees(this.inputSlots.getItem(0)) ? 1 : repairAmount;
+        ItemStack tool = this.inputSlots.getItem(0);
+        return DioritineAxeItem.hasFelledTrees(tool) || DioritinePickaxeItem.hasStrikes(tool) ? 1 : repairAmount;
     }
 
-    /** El resultado de una reparación con lingotes sale con la cuenta de árboles a 0. */
+    /** El resultado de una reparación con lingotes sale con la cuenta de árboles o de picadas a 0. */
     @ModifyArg(
             method = "createResult",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/ResultContainer;setItem(ILnet/minecraft/world/item/ItemStack;)V"),
@@ -57,7 +60,10 @@ public abstract class AnvilMenuMixin extends ItemCombinerMenu {
     )
     private ItemStack dioriteisntuseless$resetTreesOnRepair(ItemStack result) {
         // repairItemCountCost > 0 solo tras reparar con el material (no al combinar ni renombrar).
-        if (this.repairItemCountCost > 0) DioritineAxeItem.resetFelledTrees(result);
+        if (this.repairItemCountCost > 0) {
+            DioritineAxeItem.resetFelledTrees(result);
+            DioritinePickaxeItem.resetStrikes(result);
+        }
         return result;
     }
 

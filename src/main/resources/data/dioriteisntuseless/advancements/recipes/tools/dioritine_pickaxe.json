@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_dioritine_ingot": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "dioriteisntuseless:dioritine_ingot"
+            ]
+          }
+        ]
+      }
+    },
+    "has_the_recipe": {
+      "trigger": "minecraft:recipe_unlocked",
+      "conditions": {
+        "recipe": "dioriteisntuseless:dioritine_pickaxe"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_dioritine_ingot",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "dioriteisntuseless:dioritine_pickaxe"
+    ]
+  },
+  "sends_telemetry_event": false
+}

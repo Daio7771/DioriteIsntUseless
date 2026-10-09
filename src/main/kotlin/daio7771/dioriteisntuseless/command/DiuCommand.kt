@@ -132,11 +132,13 @@ object DiuCommand {
 
     private fun showAbuse(source: CommandSourceStack, player: ServerPlayer): Int {
         val state = AbuseTracker.state(source.server, player)
+        val step = AbuseTracker.nextStep(state)
+        val progress = AbuseTracker.progress(state)?.let { "${(it * 100).toInt()}%" } ?: "-"
         source.sendSuccess({
             Component.translatable(
-                "$ABUSE_LANG.status", player.displayName, state.level, state.treesFelled, state.treesAtLevel,
-                AbuseTracker.treesNeeded(state)?.toString() ?: "-",
-                AbuseTracker.worldChangeCount(source.server, player), state.takenItems.size,
+                "$ABUSE_LANG.status", player.displayName, state.level, state.treesFelled, state.strikes,
+                state.treesAtLevel, step?.trees?.toString() ?: "-", state.strikesAtLevel, step?.strikes?.toString() ?: "-",
+                progress, AbuseTracker.worldChangeCount(source.server, player), state.takenItems.size,
             )
         }, false)
         warnIfInactive(source)

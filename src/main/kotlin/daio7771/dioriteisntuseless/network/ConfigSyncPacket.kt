@@ -11,8 +11,10 @@ import net.minecraft.network.FriendlyByteBuf
  *
  * - Diorita: el cliente calcula cuánto tarda en romperse un bloque con su propia dureza. Si no
  *   coincide con la del servidor, el bloque "se rompe" en pantalla y luego reaparece.
- * - Durabilidad del hacha (la de arranque del servidor): para que la barra del cliente cuadre.
- * - Árboles antes de romperse el hacha (versión 2): también para la barra.
+ * - Durabilidad del hacha y del pico (la de arranque del servidor): para que la barra del
+ *   cliente cuadre.
+ * - Árboles antes de romperse el hacha (versión 2) y picadas antes de romperse el pico
+ *   (versión 3): también para la barra.
  *
  * Formato: [VERSION] y luego los campos. Las versiones futuras solo pueden AÑADIR campos al final;
  * un cliente antiguo lee los que conoce e ignora el resto, y uno nuevo que reciba una versión
@@ -22,6 +24,7 @@ class ConfigSyncPacket(
     val diorite: DiuConfig.Diorite,
     val axeDurability: Int,
     val treesBeforeBreaking: Int,
+    val strikesBeforeBreaking: Int,
 ) : FabricPacket {
 
     override fun write(buf: FriendlyByteBuf) {
@@ -33,12 +36,14 @@ class ConfigSyncPacket(
         buf.writeVarInt(axeDurability)
         // Versión 2
         buf.writeVarInt(treesBeforeBreaking)
+        // Versión 3
+        buf.writeVarInt(strikesBeforeBreaking)
     }
 
     override fun getType(): PacketType<ConfigSyncPacket> = TYPE
 
     companion object {
-        const val VERSION = 2
+        const val VERSION = 3
 
         val TYPE: PacketType<ConfigSyncPacket> = PacketType.create(Dioriteisntuseless.id("config_sync"), ::read)
 
@@ -54,6 +59,8 @@ class ConfigSyncPacket(
                 axeDurability = buf.readVarInt(),
                 // Un servidor de la versión 1 no rompía el hacha por árboles: sin límite.
                 treesBeforeBreaking = if (version >= 2) buf.readVarInt() else 0,
+                // Un servidor sin pico no lo tiene: la barra usa la configuración local.
+                strikesBeforeBreaking = if (version >= 3) buf.readVarInt() else 0,
             )
             // Campos de versiones más nuevas del mod que esta no conoce.
             buf.skipBytes(buf.readableBytes())

@@ -5,6 +5,7 @@ import daio7771.dioriteisntuseless.block.DioriteStats
 import daio7771.dioriteisntuseless.config.DiuConfig
 import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.item.DioritineAxeItem
+import daio7771.dioriteisntuseless.item.DioritinePickaxeItem
 import daio7771.dioriteisntuseless.mixin.client.ItemAccessor
 import daio7771.dioriteisntuseless.network.ConfigSyncPacket
 import daio7771.dioriteisntuseless.registry.ModItems
@@ -14,7 +15,7 @@ import net.minecraft.client.Minecraft
 
 /**
  * Lado del cliente de la sincronización. Conectado a un servidor remoto, el cliente usa los
- * valores del servidor (diorita y durabilidad del hacha); al desconectarse vuelve a los suyos.
+ * valores del servidor (diorita y desgaste de las herramientas); al desconectarse vuelve a los suyos.
  *
  * En un solo jugador (y en el anfitrión de una partida LAN) no se toca nada: cliente y servidor
  * integrado comparten la misma configuración y los mismos objetos, así que ya coinciden.
@@ -41,23 +42,28 @@ object ClientConfigSync {
     private fun onServerValues(packet: ConfigSyncPacket) {
         if (Minecraft.getInstance().hasSingleplayerServer()) return
         // Una línea al entrar y otra por /diu reload: útil si alguien ve bloques que reaparecen.
-        LOGGER.info("Using the server's values: diorite {}, axe durability {}, trees before breaking {}.",
-            packet.diorite, packet.axeDurability, packet.treesBeforeBreaking)
+        LOGGER.info("Using the server's values: diorite {}, tool durability {}, trees before breaking {}, strikes before breaking {}.",
+            packet.diorite, packet.axeDurability, packet.treesBeforeBreaking, packet.strikesBeforeBreaking)
         DioriteStats.applyServerValues(packet.diorite)
-        setAxeDurability(packet.axeDurability)
+        setToolDurability(packet.axeDurability)
         DioritineAxeItem.serverTreesBeforeBreaking = packet.treesBeforeBreaking
+        // 0: servidor de antes del pico (no lo tiene); se usa la configuración local.
+        DioritinePickaxeItem.serverStrikesBeforeBreaking = packet.strikesBeforeBreaking.takeIf { it > 0 }
     }
 
     private fun useLocalValues() {
         DioriteStats.clearServerValues()
-        setAxeDurability(ModConfig.axeDurabilityAtStartup)
+        setToolDurability(ModConfig.axeDurabilityAtStartup)
         DioritineAxeItem.serverTreesBeforeBreaking = null
+        DioritinePickaxeItem.serverStrikesBeforeBreaking = null
     }
 
-    private fun setAxeDurability(durability: Int) {
-        val axe = ModItems.DIORITINE_AXE
-        // Con 0 o menos el hacha dejaría de gastarse: un servidor así está mal, se ignora.
-        if (durability <= 0 || axe.maxDamage == durability) return
-        (axe as ItemAccessor).`dioriteisntuseless$setMaxDamage`(durability)
+    /** El hacha y el pico son del mismo material: misma durabilidad. */
+    private fun setToolDurability(durability: Int) {
+        // Con 0 o menos dejarían de gastarse: un servidor así está mal, se ignora.
+        if (durability <= 0) return
+        for (tool in listOf(ModItems.DIORITINE_AXE, ModItems.DIORITINE_PICKAXE)) {
+            if (tool.maxDamage != durability) (tool as ItemAccessor).`dioriteisntuseless$setMaxDamage`(durability)
+        }
     }
 }

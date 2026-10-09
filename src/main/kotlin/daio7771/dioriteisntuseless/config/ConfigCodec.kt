@@ -38,6 +38,7 @@ internal object ConfigCodec {
         val diorite = reader.section("diorite")
         val treeFelling = reader.section("treeFelling")
         val axe = reader.section("axe")
+        val pickaxe = reader.section("pickaxe")
         val abuseMode = reader.section("abuseMode")
         val client = reader.section("client")
         val config = DiuConfig(
@@ -66,6 +67,18 @@ internal object ConfigCodec {
                 durability = reader.int(axe, "durability", defaults.axe.durability, DiuConfig.Limits.AXE_DURABILITY),
                 restrictEnchantments = reader.boolean(axe, "restrictEnchantments", defaults.axe.restrictEnchantments),
             ),
+            pickaxe = DiuConfig.Pickaxe(
+                enabled = reader.boolean(pickaxe, "enabled", defaults.pickaxe.enabled),
+                strikesBeforeBreaking = reader.int(
+                    pickaxe, "strikesBeforeBreaking", defaults.pickaxe.strikesBeforeBreaking,
+                    DiuConfig.Limits.STRIKES_BEFORE_BREAKING,
+                ),
+                sneakMode = reader.enum(pickaxe, "sneakMode", defaults.pickaxe.sneakMode, SneakMode.entries),
+                dropsAtOrigin = reader.boolean(pickaxe, "dropsAtOrigin", defaults.pickaxe.dropsAtOrigin),
+                minBlocksForStrike = reader.int(
+                    pickaxe, "minBlocksForStrike", defaults.pickaxe.minBlocksForStrike, DiuConfig.Limits.MIN_BLOCKS_FOR_STRIKE,
+                ),
+            ),
             abuseMode = DiuConfig.AbuseMode(
                 enabled = reader.boolean(abuseMode, "enabled", defaults.abuseMode.enabled),
                 treesPerLevel = reader.intList(
@@ -73,6 +86,9 @@ internal object ConfigCodec {
                 ),
                 treesUntilEnding = reader.int(
                     abuseMode, "treesUntilEnding", defaults.abuseMode.treesUntilEnding, DiuConfig.Limits.ABUSE_TREES,
+                ),
+                pickaxeSteps = reader.intList(
+                    abuseMode, "pickaxeSteps", defaults.abuseMode.pickaxeSteps, DiuConfig.Limits.ABUSE_STRIKES,
                 ),
             ),
             client = DiuConfig.Client(
@@ -102,10 +118,18 @@ internal object ConfigCodec {
             addProperty("durability", config.axe.durability)
             addProperty("restrictEnchantments", config.axe.restrictEnchantments)
         }
+        section(root, "pickaxe").apply {
+            addProperty("enabled", config.pickaxe.enabled)
+            addProperty("strikesBeforeBreaking", config.pickaxe.strikesBeforeBreaking)
+            addProperty("sneakMode", config.pickaxe.sneakMode.name)
+            addProperty("dropsAtOrigin", config.pickaxe.dropsAtOrigin)
+            addProperty("minBlocksForStrike", config.pickaxe.minBlocksForStrike)
+        }
         section(root, "abuseMode").apply {
             addProperty("enabled", config.abuseMode.enabled)
             add("treesPerLevel", intArray(config.abuseMode.treesPerLevel))
             addProperty("treesUntilEnding", config.abuseMode.treesUntilEnding)
+            add("pickaxeSteps", intArray(config.abuseMode.pickaxeSteps))
         }
         section(root, "client").apply {
             addProperty("warningShown", config.client.warningShown)

@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.state.properties.BlockStateProperties
 
 /**
  * Familias de bloques que se pueden cambiar entre sí: cada tag de bloques
@@ -23,30 +24,32 @@ object BlockFamilies {
 
     /**
      * Para cada bloque de alguna familia, los demás bloques de su familia. Si un bloque está en
-     * varias, vale la primera. Se calcula cada vez (las señales son raras) para seguir los tags
-     * tras un /reload.
+     * varias, puede cambiar a cualquiera de todas ellas (la toba: a piedra o andesita, de la
+     * familia stone, y a pizarra profunda, de la familia deepslate). Se calcula cada vez (las
+     * señales son raras) para seguir los tags tras un /reload.
      */
     fun alternatives(): Map<Block, List<Block>> {
-        val result = HashMap<Block, List<Block>>()
+        val result = HashMap<Block, LinkedHashSet<Block>>()
         BuiltInRegistries.BLOCK.tags.forEach { pair ->
             val key = pair.first
             if (key.location.namespace != Dioriteisntuseless.MOD_ID || !key.location.path.startsWith(PREFIX)) return@forEach
             val members = pair.second.map { it.value() }.distinct()
             for (block in members) {
-                if (block !in result) result[block] = members.filter { it != block }
+                result.getOrPut(block) { LinkedHashSet() } += members.filter { it != block }
             }
         }
-        return result.filterValues { it.isNotEmpty() }
+        return result.filterValues { it.isNotEmpty() }.mapValues { it.value.toList() }
     }
 
     /**
-     * Bloque de construcción simple y completo: sin propiedades (nada de orientación, ejes,
-     * escaleras, losas, puertas, trampillas, raíles...), sin entidad de bloque (cofres, hornos,
-     * carteles...), sin fluido, que no emite señal de redstone y con forma de cubo entero.
-     * La diorita nunca se toca.
+     * Bloque de construcción simple y completo: sin propiedades (nada de orientación, escaleras,
+     * losas, puertas, trampillas, raíles...), salvo el eje de bloques como la pizarra profunda,
+     * que no cambia lo que hace el bloque y se guarda con el original para "Start over". Sin
+     * entidad de bloque (cofres, hornos, carteles...), sin fluido, que no emite señal de redstone
+     * y con forma de cubo entero. La diorita nunca se toca.
      */
     fun isSimpleFullBlock(level: ServerLevel, pos: BlockPos, state: BlockState): Boolean =
-        state.properties.isEmpty() &&
+        state.properties.all { it == BlockStateProperties.AXIS } &&
             !state.hasBlockEntity() &&
             state.fluidState.isEmpty &&
             !state.isSignalSource &&

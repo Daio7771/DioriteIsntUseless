@@ -6,8 +6,8 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 
 /**
- * "Diorite Is Useless" (fase A del final): para el jugador afectado, el hacha no tala y no puede
- * sacar cristales de diorita de la casilla de salida de un horno (el clic no hace nada; otros
+ * "Diorite Is Useless" (fase A del final): para el jugador afectado, el hacha no tala, el pico no
+ * pica 3x3 y no puede sacar cristales de diorita de la casilla de salida de un horno (el clic no hace nada; otros
  * jugadores y las tolvas sí pueden). Dura hasta "Start over", aunque se desactive el Abuse Mode
  * (desactivarlo no deshace lo hecho).
  *

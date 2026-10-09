@@ -16,12 +16,17 @@ object AbuseStateSync {
         ServerPlayNetworking.registerGlobalReceiver(StartOverPacket.TYPE) { _, player, _ -> onStartOverPressed(player) }
     }
 
-    /** Manda el estado al cliente del jugador (al cambiar, al entrar y tras "Start over"). */
+    /**
+     * Manda el estado al cliente del jugador (al cambiar, al subir de nivel, al entrar, tras
+     * "Start over" y al activar o desactivar el Abuse Mode).
+     */
     fun sync(player: ServerPlayer) {
         if (!ServerPlayNetworking.canSend(player, AbuseStatePacket.TYPE)) return
         val state = AbuseData.get(player.server).getIfPresent(player.uuid)
         val creditsDue = state != null && Ending.creditsDue(state)
-        ServerPlayNetworking.send(player, AbuseStatePacket(DioriteUselessness.isUseless(player), creditsDue))
+        // Desactivado, no suena nada (aunque lo ya hecho, como la diorita inútil, siga).
+        val level = if (state != null && AbuseMode.active) state.level else 0
+        ServerPlayNetworking.send(player, AbuseStatePacket(DioriteUselessness.isUseless(player), creditsDue, level))
     }
 
     /** Solo se acepta si de verdad le tocan los créditos: un cliente no puede reiniciarse cuando quiera. */

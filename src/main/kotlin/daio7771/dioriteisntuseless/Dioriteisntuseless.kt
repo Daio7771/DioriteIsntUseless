@@ -1,5 +1,6 @@
 package daio7771.dioriteisntuseless
 
+import daio7771.dioriteisntuseless.ability.AreaMiner
 import daio7771.dioriteisntuseless.ability.TreeFeller
 import daio7771.dioriteisntuseless.abuse.AbuseTracker
 import daio7771.dioriteisntuseless.command.DiuCommand
@@ -16,12 +17,13 @@ import org.slf4j.LoggerFactory
 class Dioriteisntuseless : ModInitializer {
 
     override fun onInitialize() {
-        // Lo primero: la durabilidad del hacha sale de la configuración al registrar el ítem.
+        // Lo primero: la durabilidad del hacha y del pico sale de la configuración al registrarlos.
         ModConfig.loadAtStartup()
         ModItems.init()
         ModSounds.init()
         ModRecipes.init()
         TreeFeller.init()
+        AreaMiner.init()
         DiuCommand.init()
         ConfigSync.init()
         AbuseTracker.init()
