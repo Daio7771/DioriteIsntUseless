@@ -3,20 +3,20 @@
 ![Logo](https://github.com/Daio7771/DioriteIsntUseless/blob/main/banner.png)
 
 
-This mod takes the Diorite and turn it into something usefull. There is no more hate to the diorite... not yet. You can build a house instantly using the dioritine axe or go deeper... more deeper using the dioritine pickaxe, but be careful, don't overuse d...
+This mod takes the diorite and turns it into something useful. No more hate for diorite... not yet. You can build a house instantly using the dioritine axe or go deeper... much deeper using the dioritine pickaxe, but be careful, don't overuse d...
 
-This mod is open-source, you can contribuite.
+This mod is open-source, you can contribute.
 
 > [!WARNING]
 >
 > This mod contains psychological horror elements and unsettling sounds.
 >
 > Nothing in this mod will harm your computer, your files, or your worlds.
-> There are no jump scares or flashing lightss.
+> There are no jump scares or flashing lights.
 >
 > But some things might not be what they seem.
 >
-> You can disable this elements in the mod config, called "Abuse mode".
+> You can disable these elements in the mod config, called "Abuse mode".
 
 ## Features
 
