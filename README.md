@@ -5,6 +5,8 @@
 
 This mod takes the Diorite and turn it into something usefull. There is no more hate to the diorite... not yet. You can build a house instantly using the dioritine axe or go deeper... more deeper using the dioritine pickaxe, but be careful, don't overuse d...
 
+This mod is open-source, you can contribuite.
+
 > [!WARNING]
 >
 > This mod contains psychological horror elements and unsettling sounds.
