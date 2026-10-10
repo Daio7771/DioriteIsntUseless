@@ -28,7 +28,7 @@ This mod is open-source, you can contribute.
 - **Two advancements.** Find out how.
 
 
-## 📋 Requirements
+## Requirements
 
 - Minecraft 1.20.1
 - Fabric API
