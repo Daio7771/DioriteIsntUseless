@@ -14,7 +14,7 @@ This mod is open-source, you can contribute.
 > Nothing in this mod will harm your computer, your files, or your worlds.
 > There are no jump scares or flashing lights.
 >
-> But some things might not be what they seem.
+> But there may be moments that make you jump.
 >
 > You can disable these elements in the mod config, called "Abuse mode".
 
