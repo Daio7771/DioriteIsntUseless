@@ -88,6 +88,8 @@ data class DiuConfig(
          * ending. Trees and strikes add up as fractions (see AbuseTracker.stepReached).
          */
         val pickaxeSteps: List<Int> = listOf(10, 15, 15, 15, 15),
+        /** false: The "Useful" Owner's statue crumbles without the loud crack of stone. */
+        val jumpscares: Boolean = true,
     ) {
         companion object {
             /** Size of treesPerLevel. */

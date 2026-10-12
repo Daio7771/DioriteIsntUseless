@@ -8,6 +8,7 @@ import daio7771.dioriteisntuseless.network.ConfigSync
 import me.shedaniel.clothconfig2.api.ConfigBuilder
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.screens.ConfirmScreen
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 
@@ -191,8 +192,13 @@ object DiuConfigScreen {
                     .setSaveConsumer { abuseMode = abuseMode.copy(enabled = it) }
                     .build()
             )
-            // Trees and strikes per level: tucked away, in a collapsed subsection.
+            // Jump scares and trees and strikes per level: tucked away, in a collapsed subsection.
             val advanced = entries.startSubCategory(text("abuseMode.advanced")).setExpanded(false)
+            advanced += entries.startBooleanToggle(text("abuseMode.jumpscares"), current.abuseMode.jumpscares)
+                .setDefaultValue(defaults.abuseMode.jumpscares)
+                .setTooltip(text("abuseMode.jumpscares.tooltip"))
+                .setSaveConsumer { abuseMode = abuseMode.copy(jumpscares = it) }
+                .build()
             for (i in 0 until DiuConfig.AbuseMode.LEVELS) {
                 advanced += entries.startIntField(text("abuseMode.treesPerLevel", i + 1), current.abuseMode.treesPerLevel[i])
                     .setDefaultValue(defaults.abuseMode.treesPerLevel[i])
@@ -233,13 +239,43 @@ object DiuConfigScreen {
 
         builder.setSavingRunnable {
             // Start from the config in effect so nothing that is not on the screen is lost.
-            save(
-                ModConfig.current.copy(
-                    diorite = diorite, treeFelling = treeFelling, axe = axe, pickaxe = pickaxe, abuseMode = abuseMode,
+            val config = ModConfig.current.copy(
+                diorite = diorite, treeFelling = treeFelling, axe = axe, pickaxe = pickaxe, abuseMode = abuseMode,
+            )
+            if (ModConfig.current.abuseMode.enabled && !config.abuseMode.enabled) {
+                // Everything else is saved now, with the Abuse Mode still on; only "Disable anyway" turns it off.
+                save(config.copy(abuseMode = config.abuseMode.copy(enabled = true)))
+                confirmDisablingAbuseMode(parent)
+            } else {
+                save(config)
+            }
+        }
+        return builder.build()
+    }
+
+    /**
+     * "Are you sure?" before disabling the Abuse Mode. Cloth Config opens the next screen right after
+     * saving (the previous one, or its "restart required" notice), so this opens on the next tick,
+     * before anything else is drawn, and then goes on to that screen. Closing it in any way other
+     * than "Disable anyway" (Escape too) keeps it on. Editing the JSON by hand asks nothing.
+     */
+    private fun confirmDisablingAbuseMode(parent: Screen?) {
+        val minecraft = Minecraft.getInstance()
+        minecraft.tell {
+            val next = minecraft.screen ?: parent
+            minecraft.setScreen(
+                ConfirmScreen(
+                    { disable ->
+                        if (disable) save(ModConfig.current.copy(abuseMode = ModConfig.current.abuseMode.copy(enabled = false)))
+                        minecraft.setScreen(next)
+                    },
+                    text("abuseMode.confirmDisable.title"),
+                    text("abuseMode.confirmDisable.message"),
+                    text("abuseMode.confirmDisable.disable"),
+                    text("abuseMode.confirmDisable.keep"),
                 )
             )
         }
-        return builder.build()
     }
 
     private fun List<Int>.with(index: Int, value: Int): List<Int> = toMutableList().also { it[index] = value }

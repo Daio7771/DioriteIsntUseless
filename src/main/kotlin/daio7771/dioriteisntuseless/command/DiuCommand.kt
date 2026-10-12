@@ -6,6 +6,10 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import daio7771.dioriteisntuseless.abuse.AbuseMode
 import daio7771.dioriteisntuseless.abuse.AbuseTracker
 import daio7771.dioriteisntuseless.abuse.signal.AbuseSignals
+import daio7771.dioriteisntuseless.abuse.visitor.MinerQuests
+import daio7771.dioriteisntuseless.abuse.visitor.MinerVisits
+import daio7771.dioriteisntuseless.abuse.visitor.OwnerStatue
+import daio7771.dioriteisntuseless.abuse.visitor.Visitors
 import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.network.ConfigSync
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
@@ -24,10 +28,13 @@ import net.minecraft.world.level.block.state.BlockState
 
 /**
  * /diu reload: reads the config again without restarting.
- * /diu abuse <player> [level | signal [type] | credits | reset | change <pos> <block>]: DEVELOPMENT
- * ONLY, for testing the Abuse Mode; shows or changes the level, fires a signal now (a specific
- * one or a random one), skips to the credits, runs "Start over" or makes a recorded world change
- * (to test that "Start over" undoes it).
+ * /diu abuse <player> [level | signal [type] | credits | reset | change <pos> <block> |
+ * visitor [miner | figure | statue | dismiss | next | quest]]: DEVELOPMENT ONLY, for testing the Abuse Mode; shows or
+ * changes the level, fires a signal now (a specific one or a random one), skips to the credits,
+ * runs "Start over", makes a recorded world change (to test that "Start over" undoes it), or
+ * shows the visitors' state, brings one for 30 s, sends them away or makes The Miner's next visit
+ * due now (the real one: 5 minutes, then the next one is scheduled), gives them a new job of his,
+ * or brings the real statue now (it crumbles 3 s after they see it).
  * Operators only (level 2).
  */
 object DiuCommand {
@@ -90,6 +97,34 @@ object DiuCommand {
                                 }
                         )
                     )
+                )
+                .then(
+                    Commands.literal("visitor")
+                        .executes { showVisitors(it.source, EntityArgument.getPlayer(it, "player")) }
+                        .then(
+                            Commands.literal("miner")
+                                .executes { bringVisitor(it.source, EntityArgument.getPlayer(it, "player"), Visitors.Kind.MINER) }
+                        )
+                        .then(
+                            Commands.literal("figure")
+                                .executes { bringVisitor(it.source, EntityArgument.getPlayer(it, "player"), Visitors.Kind.OWNER) }
+                        )
+                        .then(
+                            Commands.literal("next")
+                                .executes { minerVisitNow(it.source, EntityArgument.getPlayer(it, "player")) }
+                        )
+                        .then(
+                            Commands.literal("quest")
+                                .executes { newQuest(it.source, EntityArgument.getPlayer(it, "player")) }
+                        )
+                        .then(
+                            Commands.literal("statue")
+                                .executes { bringStatue(it.source, EntityArgument.getPlayer(it, "player")) }
+                        )
+                        .then(
+                            Commands.literal("dismiss")
+                                .executes { dismissVisitors(it.source, EntityArgument.getPlayer(it, "player")) }
+                        )
                 )
                 .then(
                     Commands.argument("level", IntegerArgumentType.integer(0, AbuseTracker.LEVEL_FINAL))
@@ -188,6 +223,74 @@ object DiuCommand {
         source.sendSuccess({
             Component.translatable("$ABUSE_LANG.change", pos.toShortString(), player.displayName)
         }, false)
+        return 1
+    }
+
+    private fun showVisitors(source: CommandSourceStack, player: ServerPlayer): Int {
+        val state = AbuseTracker.state(source.server, player)
+        val quest = MinerQuests.Type.byId(state.miner.questType)?.let { type ->
+            Component.translatable(
+                "$ABUSE_LANG.visitor.quest", MinerQuests.description(state.miner),
+                MinerQuests.progress(player, state, type), state.miner.questAmount,
+            )
+        } ?: Component.literal("-")
+        val here = Visitors.Kind.entries.filter { Visitors.current(player.uuid, it) != null }.joinToString { it.name.lowercase() }
+        source.sendSuccess({
+            Component.translatable(
+                "$ABUSE_LANG.visitor.status", player.displayName, state.miner.met, state.miner.nextVisitAt,
+                state.playTicks, state.miner.gone, quest, state.owner.axesWornOut, state.owner.pickaxesWornOut,
+                OwnerStatue.TOOLS_NEEDED, state.owner.statueShown, here.ifEmpty { "-" },
+            )
+        }, false)
+        warnIfInactive(source)
+        return 1
+    }
+
+    private fun bringVisitor(source: CommandSourceStack, player: ServerPlayer, kind: Visitors.Kind): Int {
+        if (!Visitors.testBring(player, kind)) {
+            source.sendFailure(Component.translatable("$ABUSE_LANG.visitor.no_spot", player.displayName))
+            warnIfInactive(source)
+            return 0
+        }
+        source.sendSuccess({ Component.translatable("$ABUSE_LANG.visitor.brought", player.displayName) }, false)
+        return 1
+    }
+
+    private fun minerVisitNow(source: CommandSourceStack, player: ServerPlayer): Int {
+        if (!MinerVisits.testVisitNow(player)) {
+            source.sendFailure(Component.translatable("$ABUSE_LANG.inactive"))
+            return 0
+        }
+        source.sendSuccess({ Component.translatable("$ABUSE_LANG.visitor.next", player.displayName) }, false)
+        return 1
+    }
+
+    private fun bringStatue(source: CommandSourceStack, player: ServerPlayer): Int {
+        if (!OwnerStatue.testNow(player)) {
+            source.sendFailure(Component.translatable("$ABUSE_LANG.visitor.no_spot", player.displayName))
+            warnIfInactive(source)
+            return 0
+        }
+        source.sendSuccess({ Component.translatable("$ABUSE_LANG.visitor.statue", player.displayName) }, false)
+        return 1
+    }
+
+    private fun newQuest(source: CommandSourceStack, player: ServerPlayer): Int {
+        if (!AbuseMode.active) {
+            source.sendFailure(Component.translatable("$ABUSE_LANG.inactive"))
+            return 0
+        }
+        val state = AbuseTracker.state(source.server, player)
+        AbuseMode.guard("test miner quest") { MinerQuests.assign(player, state) }
+        source.sendSuccess({
+            Component.translatable("$ABUSE_LANG.visitor.new_quest", player.displayName, MinerQuests.description(state.miner))
+        }, false)
+        return 1
+    }
+
+    private fun dismissVisitors(source: CommandSourceStack, player: ServerPlayer): Int {
+        Visitors.dismissAll(player.uuid)
+        source.sendSuccess({ Component.translatable("$ABUSE_LANG.visitor.dismissed", player.displayName) }, false)
         return 1
     }
 

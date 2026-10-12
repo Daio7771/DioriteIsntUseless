@@ -6,6 +6,7 @@ import daio7771.dioriteisntuseless.abuse.AbuseTracker
 import daio7771.dioriteisntuseless.command.DiuCommand
 import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.network.ConfigSync
+import daio7771.dioriteisntuseless.registry.ModEntities
 import daio7771.dioriteisntuseless.registry.ModItems
 import daio7771.dioriteisntuseless.registry.ModRecipes
 import daio7771.dioriteisntuseless.registry.ModSounds
@@ -21,6 +22,7 @@ class Dioriteisntuseless : ModInitializer {
         ModConfig.loadAtStartup()
         ModItems.init()
         ModSounds.init()
+        ModEntities.init()
         ModRecipes.init()
         TreeFeller.init()
         AreaMiner.init()

@@ -23,7 +23,7 @@ object AbuseStateSync {
     fun sync(player: ServerPlayer) {
         if (!ServerPlayNetworking.canSend(player, AbuseStatePacket.TYPE)) return
         val state = AbuseData.get(player.server).getIfPresent(player.uuid)
-        val creditsDue = state != null && Ending.creditsDue(state)
+        val creditsDue = state != null && Ending.creditsDue(state) && state.finaleDone
         // When disabled nothing plays (even if what was already done, like useless diorite, stays).
         val level = if (state != null && AbuseMode.active) state.level else 0
         ServerPlayNetworking.send(player, AbuseStatePacket(DioriteUselessness.isUseless(player), creditsDue, level))
@@ -34,7 +34,7 @@ object AbuseStateSync {
         if (!AbuseMode.healthy) return
         AbuseMode.guard("start over from the credits") {
             val state = AbuseData.get(player.server).getIfPresent(player.uuid)
-            if (state == null || !Ending.creditsDue(state)) {
+            if (state == null || !Ending.creditsDue(state) || !state.finaleDone) {
                 LOGGER.debug("Abuse mode: ignoring a start over request from {}: no credits due.", player.gameProfile.name)
                 sync(player)  // in case their client believed otherwise
                 return

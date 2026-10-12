@@ -1,6 +1,8 @@
 package daio7771.dioriteisntuseless.abuse
 
 import daio7771.dioriteisntuseless.Dioriteisntuseless
+import daio7771.dioriteisntuseless.abuse.visitor.MinerState
+import daio7771.dioriteisntuseless.abuse.visitor.OwnerState
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.nbt.Tag
@@ -122,6 +124,9 @@ class PlayerAbuse {
     /** Their client has already been told the credits are due. Not saved: repeated on join. */
     var creditsAnnounced = false
 
+    /** The last moment before the credits (Finale) has happened: from now on the credits are simply due. */
+    var finaleDone = false
+
     /** Phase A of the ending: for this player the axe does not fell, the pickaxe does not mine 3x3 and smelting diorite gives no crystals. */
     var dioriteUseless = false
 
@@ -133,6 +138,12 @@ class PlayerAbuse {
 
     /** "Start over" happened while the player was offline: [takenItems] is given back on join. */
     var returnItemsOnJoin = false
+
+    /** The Miner: his visits to this player. */
+    val miner = MinerState()
+
+    /** The "Useful" Owner: its statue and the worn-out tools that bring it. */
+    val owner = OwnerState()
 
     /** "Start over": level, counters, time and signals back to 0, and diorite is useful again. */
     fun resetProgress() {
@@ -152,7 +163,10 @@ class PlayerAbuse {
         endingStartedAt = -1
         endingMessagesSent = 0
         creditsAnnounced = false
+        finaleDone = false
         dioriteUseless = false
+        miner.reset()
+        owner.reset()
     }
 
     fun save(tag: CompoundTag) {
@@ -171,9 +185,12 @@ class PlayerAbuse {
         tag.putLong("EndingDueAt", endingDueAt)
         tag.putLong("EndingStartedAt", endingStartedAt)
         tag.putInt("EndingMessagesSent", endingMessagesSent)
+        tag.putBoolean("FinaleDone", finaleDone)
         tag.putBoolean("DioriteUseless", dioriteUseless)
         tag.put("TakenItems", ListTag().apply { takenItems.forEach { add(it.save(CompoundTag())) } })
         tag.putBoolean("ReturnItemsOnJoin", returnItemsOnJoin)
+        tag.put("Miner", miner.save())
+        tag.put("Owner", owner.save())
     }
 
     companion object {
@@ -209,12 +226,17 @@ class PlayerAbuse {
             } else {
                 EndingMessages.dueFor(this)
             }
+            // Missing in data from before it: if the credits were already due, it happens once.
+            finaleDone = tag.getBoolean("FinaleDone")
             dioriteUseless = tag.getBoolean("DioriteUseless")
             for (item in tag.getList("TakenItems", Tag.TAG_COMPOUND.toInt())) {
                 // An item from a mod that is gone reads as empty: it is lost (there is nothing to give back).
                 ItemStack.of(item as CompoundTag).takeUnless { it.isEmpty }?.let(takenItems::add)
             }
             returnItemsOnJoin = tag.getBoolean("ReturnItemsOnJoin")
+            // Missing in data from before them: getCompound gives an empty tag and everything starts at 0.
+            miner.load(tag.getCompound("Miner"))
+            owner.load(tag.getCompound("Owner"))
         }
     }
 }

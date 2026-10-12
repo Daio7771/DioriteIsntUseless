@@ -2,6 +2,7 @@ package daio7771.dioriteisntuseless.abuse
 
 import daio7771.dioriteisntuseless.abuse.morse.MorseBeeper
 import daio7771.dioriteisntuseless.abuse.signal.NonsenseNameSignal
+import daio7771.dioriteisntuseless.abuse.visitor.Visitors
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 import java.util.UUID
@@ -12,7 +13,7 @@ import java.util.UUID
  * 1. Gives back what phase A took (if it does not fit, at their feet). If offline, on join.
  * 2. Undoes their changes to the world (WorldChanges), respecting whatever they changed themselves.
  * 3. Diorite is useful again for them.
- * 4. Removes the visual effects (nonsense names, beeps).
+ * 4. Removes the visual effects (nonsense names, beeps) and sends the visitors away.
  * 5. Level, counters and time back to 0: the cycle can start again.
  *
  * It works even if the Abuse Mode is disabled (it is the way to undo things) and even if the player
@@ -26,6 +27,8 @@ object StartOver {
         WorldChanges.undoAll(server, uuid)
         state.resetProgress()
         MorseBeeper.stop(uuid)
+        Finale.stop(server, uuid)
+        Visitors.dismissAll(uuid)
         val player = server.playerList.getPlayer(uuid)
         if (player != null) {
             NonsenseNameSignal.clear(player)

@@ -23,9 +23,11 @@ import net.minecraft.world.item.ItemStack
  *   3x3, and they cannot take crystals out of the furnace (DioriteUselessness). Final Morse:
  *   DELETE THIS MOD.
  * - Phase B: 2 min 15 s with every item carrying a nonsense name and chat messages that get more
- *   and more broken, ending with USELESS in red every second (EndingMessages). Then one last cave
- *   sound plays (CaveSounds) and the credits are due: their client opens them right then if it is
- *   a calm moment (if not, as soon as it is), and their "Start over" button starts everything over.
+ *   and more broken, ending with USELESS in red every second (EndingMessages).
+ * - Then, at the next safe moment, the finale (Finale): one last cave sound, USELESS line by line,
+ *   they cannot move, The "Useful" Owner stands in front of them, and the credits open. From then
+ *   on the credits are due (they reopen as CreditsGate decides) and their "Start over" button
+ *   starts everything over.
  *
  * So nothing is seen vanishing from the hotbar, phase A waits for a moment when they are not
  * looking: on joining the world or on waking up after sleeping. If neither has happened within
@@ -38,12 +40,6 @@ object Ending {
 
     /** If they neither join nor sleep within this time after it is due, phase A happens anyway. */
     private const val FALLBACK_TICKS = AbuseTracker.TICKS_PER_DAY / 2
-
-    /**
-     * The last cave sound plays if phase B has just finished, not when joining again with the
-     * credits pending (they are announced again, but silently).
-     */
-    private const val FINAL_SOUND_TOLERANCE_TICKS = 40L
 
     /** From here on the screen is completely dark while sleeping. */
     private const val DARK_SLEEP_TICKS = 100
@@ -60,8 +56,8 @@ object Ending {
 
     /**
      * From the player tick (every few ticks): notes when the ending becomes due, the half-day
-     * safety net, the phase B messages and, when that phase ends, telling their client the credits
-     * are due.
+     * safety net, the phase B messages and, when that phase ends, the finale (or, if it already
+     * happened, telling their client the credits are due).
      */
     fun tick(player: ServerPlayer, state: PlayerAbuse) {
         if (state.level == AbuseTracker.MAX_LEVEL && state.endingDueAt < 0 && state.finalSignPlacedAt >= 0 &&
@@ -72,11 +68,12 @@ object Ending {
         val due = dueAt(state)
         if (due >= 0 && state.playTicks >= due + FALLBACK_TICKS) start(player, state)
         EndingMessages.tick(player, state)
-        if (!state.creditsAnnounced && creditsDue(state)) {
+        if (!creditsDue(state)) return
+        if (!state.finaleDone) {
+            Finale.tryStart(player, state)
+        } else if (!state.creditsAnnounced) {
+            // Joined again with the credits pending: announced again, silently.
             state.creditsAnnounced = true
-            if (state.playTicks - state.endingStartedAt < PHASE_B_TICKS + FINAL_SOUND_TOLERANCE_TICKS) {
-                CaveSounds.playFinal(player)
-            }
             AbuseStateSync.sync(player)
         }
     }
@@ -86,13 +83,17 @@ object Ending {
         state.level == AbuseTracker.LEVEL_FINAL && state.endingStartedAt >= 0 &&
             state.playTicks - state.endingStartedAt >= PHASE_B_TICKS
 
-    /** For the testing command: marks phase B as finished (running phase A first if needed). */
+    /**
+     * For the testing command: marks phase B as finished (running phase A first if needed). The
+     * finale comes at the next safe moment, as many times as this is used.
+     */
     fun skipToCredits(player: ServerPlayer, state: PlayerAbuse) {
         if (state.level != AbuseTracker.LEVEL_FINAL) start(player, state)
         state.endingStartedAt = (state.playTicks - PHASE_B_TICKS).coerceAtLeast(0)
         state.playTicks = state.endingStartedAt + PHASE_B_TICKS
         state.endingMessagesSent = EndingMessages.COUNT
-        state.creditsAnnounced = true
+        state.creditsAnnounced = false
+        state.finaleDone = false
         AbuseStateSync.sync(player)
     }
 

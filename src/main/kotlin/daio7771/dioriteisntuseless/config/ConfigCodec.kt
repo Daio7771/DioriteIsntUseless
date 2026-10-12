@@ -90,6 +90,7 @@ internal object ConfigCodec {
                 pickaxeSteps = reader.intList(
                     abuseMode, "pickaxeSteps", defaults.abuseMode.pickaxeSteps, DiuConfig.Limits.ABUSE_STRIKES,
                 ),
+                jumpscares = reader.boolean(abuseMode, "jumpscares", defaults.abuseMode.jumpscares),
             ),
             client = DiuConfig.Client(
                 warningShown = reader.boolean(client, "warningShown", defaults.client.warningShown),
@@ -130,6 +131,7 @@ internal object ConfigCodec {
             add("treesPerLevel", intArray(config.abuseMode.treesPerLevel))
             addProperty("treesUntilEnding", config.abuseMode.treesUntilEnding)
             add("pickaxeSteps", intArray(config.abuseMode.pickaxeSteps))
+            addProperty("jumpscares", config.abuseMode.jumpscares)
         }
         section(root, "client").apply {
             addProperty("warningShown", config.client.warningShown)

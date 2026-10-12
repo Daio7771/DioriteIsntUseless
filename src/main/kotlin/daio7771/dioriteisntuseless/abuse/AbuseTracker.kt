@@ -6,6 +6,10 @@ import daio7771.dioriteisntuseless.abuse.morse.MorsePhrases
 import daio7771.dioriteisntuseless.abuse.signal.AbuseSignals
 import daio7771.dioriteisntuseless.abuse.signal.NonsenseNameSignal
 import daio7771.dioriteisntuseless.abuse.text.SignWords
+import daio7771.dioriteisntuseless.abuse.visitor.MinerQuests
+import daio7771.dioriteisntuseless.abuse.visitor.MinerVisits
+import daio7771.dioriteisntuseless.abuse.visitor.OwnerStatue
+import daio7771.dioriteisntuseless.abuse.visitor.Visitors
 import daio7771.dioriteisntuseless.config.DiuConfig
 import daio7771.dioriteisntuseless.config.ModConfig
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
@@ -47,7 +51,10 @@ object AbuseTracker {
         MorsePhrases.init()
         SignWords.init()
         Ending.init()
+        Finale.init()
         AbuseStateSync.init()
+        Visitors.init()
+        OwnerStatue.init()
         ServerLifecycleEvents.SERVER_STARTING.register {
             AbuseMode.resetSession()
             wasActive = false
@@ -91,6 +98,7 @@ object AbuseTracker {
             count(state)
             AbuseSignals.onAbuseAction(player, state)
             CaveSounds.onAbuseAction(player, state)
+            MinerQuests.onAbuseAction(player, state)
             data.setDirty()
         }
     }
@@ -129,6 +137,8 @@ object AbuseTracker {
 
     private fun onServerTick(server: MinecraftServer) {
         if (AbuseMode.healthy) AbuseMode.guard("world restoration") { WorldChanges.tick(server) }
+        // Before anything else and always, even disabled or after an error: nobody stays frozen.
+        Finale.safetyTick(server)
         val active = AbuseMode.active
         if (active != wasActive) {
             wasActive = active
@@ -160,6 +170,8 @@ object AbuseTracker {
                 CaveSounds.tick(player, state)
                 FinalSign.tick(player, state)
                 Ending.tick(player, state)
+                MinerVisits.tick(player, state)
+                OwnerStatue.tick(player, state)
             }
             data.setDirty()
         }

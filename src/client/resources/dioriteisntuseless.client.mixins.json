@@ -7,6 +7,7 @@
     "GuiAccessor",
     "ItemAccessor",
     "ItemStackMixin",
+    "KeyboardInputMixin",
     "MinecraftMixin",
     "MusicManagerMixin"
   ],
