@@ -12,9 +12,9 @@ This mod is open-source, you can contribute.
 > This mod contains psychological horror elements and unsettling sounds.
 >
 > Nothing in this mod will harm your computer, your files, or your worlds.
-> There are no jump scares or flashing lights.
 >
-> But there may be moments that make you jump.
+> **There are no jump scares or flashing lights.
+> But there may be moments that make you jump.**
 >
 > You can disable these elements in the mod config, called "Abuse mode".
 
