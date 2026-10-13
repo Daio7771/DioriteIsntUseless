@@ -13,17 +13,17 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 
 /**
- * The Miner's jobs: one at a time, paid in emeralds or iron. They count what the player does, not
+ * The Miner's favors (jobs): one at a time, paid in emeralds or iron. They are all he asks for. They count what the player does, not
  * marked items (which would not stack):
  * - Fell N trees with the Dioritine Axe, and make N 3x3 strikes with the Dioritine Pickaxe: the
  *   same counters as the Abuse Mode (PlayerAbuse.treesFelled and strikes), counted from the moment
  *   the job was given. Like those counters, they do not count in creative.
  * - Bring him N Diorite Crystals: handed over when talking to him, if they carry that many.
  *
- * Jobs are given and paid when talking to him (right-click, before his trades open); he says it in
- * chat, only to that player, in the mood of their abuse level (MinerSpeech). At level 4 he only
- * pays: no more jobs. When one is done away from him, a quiet line above the hotbar says so.
- * While his trading screen is open, a note at its top shows the job ([sendNote]).
+ * Jobs are given and paid when talking to him (right-click); he says it in his bubble, only to that
+ * player, in the mood of their abuse level (MinerSpeech). At level 4 he only pays: no more jobs.
+ * When one is done away from him, a quiet line above the hotbar says so. While they are near him,
+ * a note on their screen shows the job and how far along it is ([sendNote]).
  *
  * Only used from the server thread.
  */
@@ -45,7 +45,7 @@ object MinerQuests {
     private val TIERS = mapOf(
         Type.FELL_TREES to listOf(Tier(3, 2, 5), Tier(5, 3, 8), Tier(8, 5, 12)),
         Type.STRIKES to listOf(Tier(5, 2, 5), Tier(10, 3, 8), Tier(15, 5, 12)),
-        // Better than selling them to him, even at the best price (12 per emerald).
+        // Crystals take smelting: they pay the most.
         Type.BRING_CRYSTALS to listOf(Tier(32, 3, 8), Tier(64, 6, 16)),
     )
 
@@ -53,11 +53,11 @@ object MinerQuests {
     private const val NOTE = "note.${Dioriteisntuseless.MOD_ID}.miner"
 
     /**
-     * Talking to him (right-click). Pays a finished job (right away) and gives a new one; if the
-     * current one is not finished, reminds them of it, only on the first talk of each visit
-     * ([firstTalk]). Returns what he says about it, for him to say in order.
+     * Talking to him (right-click), every time. Pays a finished job (right away) and gives a new
+     * one; if the current one is not finished, reminds them of it and how far along it is. Returns
+     * what he says about it, for him to say in order.
      */
-    fun onTalk(player: ServerPlayer, state: PlayerAbuse, firstTalk: Boolean, mood: MinerSpeech.Mood): List<Component> {
+    fun onTalk(player: ServerPlayer, state: PlayerAbuse, mood: MinerSpeech.Mood): List<Component> {
         val lines = ArrayList<Component>()
         val miner = state.miner
         val type = Type.byId(miner.questType)
@@ -71,7 +71,7 @@ object MinerQuests {
         if (current == null) {
             assign(player, state)
             lines += Component.translatable("$LANG.quest.new${mood.suffix}", description(miner), reward(miner))
-        } else if (firstTalk) {
+        } else {
             lines += Component.translatable(
                 "$LANG.quest.reminder${mood.suffix}", description(miner), progress(player, state, current), miner.questAmount,
             )
@@ -79,9 +79,13 @@ object MinerQuests {
         return lines
     }
 
-    /** From AbuseTracker after every tree or strike: if it finishes the job, a quiet line says so. */
+    /**
+     * From AbuseTracker after every tree or strike: the note on their screen is updated if he is
+     * there, and if it finishes the job, a quiet line says so.
+     */
     fun onAbuseAction(player: ServerPlayer, state: PlayerAbuse) {
         val type = Type.byId(state.miner.questType) ?: return
+        Visitors.current(player.uuid, Visitors.Kind.MINER)?.let { sendNote(player, state, it.id) }
         // Exactly at the amount: only the action that finishes it, not every one after it.
         if (type == Type.BRING_CRYSTALS || counter(state, type) - state.miner.questStart != state.miner.questAmount.toLong()) return
         player.displayClientMessage(
@@ -92,19 +96,23 @@ object MinerQuests {
     }
 
     /**
-     * Right before his trading screen opens: the note at its top (MinerNotePacket), with the job
-     * they have from him or, if none, his phrase of the level. Not at level 4 (no trading there),
-     * nor to clients without the mod.
+     * The note on their screen while they are near The Miner ([minerId]) (MinerNotePacket): the job
+     * they have from him and how far along it is or, if none, his phrase of the level. At level 4,
+     * an empty one: no note. Sent when he arrives, when they talk to him, when his mood changes
+     * and after every tree or strike. Not to clients without the mod.
      */
-    fun sendNote(player: ServerPlayer, state: PlayerAbuse, mood: MinerSpeech.Mood) {
-        if (mood == MinerSpeech.Mood.FAREWELL || !ServerPlayNetworking.canSend(player, MinerNotePacket.TYPE)) return
+    fun sendNote(player: ServerPlayer, state: PlayerAbuse, minerId: Int) {
+        if (!ServerPlayNetworking.canSend(player, MinerNotePacket.TYPE)) return
+        val mood = MinerSpeech.mood(state.level)
         val miner = state.miner
         val type = Type.byId(miner.questType)
-        val note = if (type == null) {
-            MinerNotePacket(Component.empty(), Component.translatable("$NOTE.wants${mood.suffix}"), 0, 0, false, Component.empty())
-        } else {
-            MinerNotePacket(
-                Component.translatable("$NOTE.job${mood.suffix}"), description(miner), miner.questAmount,
+        val note = when {
+            mood == MinerSpeech.Mood.FAREWELL ->
+                MinerNotePacket(minerId, Component.empty(), Component.empty(), 0, 0, false, Component.empty())
+            type == null ->
+                MinerNotePacket(minerId, Component.empty(), Component.translatable("$NOTE.wants${mood.suffix}"), 0, 0, false, Component.empty())
+            else -> MinerNotePacket(
+                minerId, Component.translatable("$NOTE.job${mood.suffix}"), description(miner), miner.questAmount,
                 progress(player, state, type).toInt(), type == Type.BRING_CRYSTALS, reward(miner),
             )
         }

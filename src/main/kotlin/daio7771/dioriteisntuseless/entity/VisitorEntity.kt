@@ -118,7 +118,7 @@ abstract class VisitorEntity(type: EntityType<out VisitorEntity>, level: Level) 
         if (isLeaving && (!Visibility.mightSee(player, boundingBox) || ++leavingTicks >= MAX_LEAVING_TICKS)) discard()
     }
 
-    /** Busy with the player (trading, talking): its time does not run and it does not leave meanwhile. */
+    /** Busy with the player (talking): its time does not run and it does not leave meanwhile. */
     protected open val busy: Boolean get() = false
 
     /** Every server tick while it is with [player] (after its goals have run). */
