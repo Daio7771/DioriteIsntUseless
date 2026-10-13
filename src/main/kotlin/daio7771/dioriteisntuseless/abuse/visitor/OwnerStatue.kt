@@ -23,7 +23,8 @@ import java.util.UUID
 
 /**
  * The first appearance of The "Useful" Owner, once per cycle (until "Start over"): when the player
- * has worn out [TOOLS_NEEDED] Dioritine Axes and as many Dioritine Pickaxes (OwnerState).
+ * has worn out [TOOLS_NEEDED] Dioritine Axes or [TOOLS_NEEDED] Dioritine Pickaxes, whichever comes
+ * first (OwnerState). Axes and pickaxes do not add up: it takes 3 of the same kind.
  *
  * - A while later, at a calm moment, it appears silently 4-6 blocks behind them, out of sight,
  *   on solid ground and never inside a building (Visitors.Kind.OWNER). It stands still.
@@ -69,7 +70,7 @@ object OwnerStatue {
     /** From the AbuseTracker player tick (every few ticks). */
     fun tick(player: ServerPlayer, state: PlayerAbuse) {
         val owner = state.owner
-        if (owner.statueShown || owner.axesWornOut < TOOLS_NEEDED || owner.pickaxesWornOut < TOOLS_NEEDED) return
+        if (owner.statueShown || !toolsWornOut(owner)) return
         if (state.level >= AbuseTracker.LEVEL_FINAL) return  // the ending has its own appearance
         val waitUntil = nextTryAt[player.uuid]
         if (waitUntil == null) {
@@ -82,6 +83,10 @@ object OwnerStatue {
         scheduleTry(player, state)
         bring(player)
     }
+
+    /** [TOOLS_NEEDED] axes or [TOOLS_NEEDED] pickaxes worn out: each kind on its own, never added together. */
+    fun toolsWornOut(owner: OwnerState): Boolean =
+        owner.axesWornOut >= TOOLS_NEEDED || owner.pickaxesWornOut >= TOOLS_NEEDED
 
     private fun scheduleTry(player: ServerPlayer, state: PlayerAbuse) {
         nextTryAt[player.uuid] = state.playTicks + MIN_DELAY_TICKS + (player.random.nextDouble() * (MAX_DELAY_TICKS - MIN_DELAY_TICKS)).toLong()
