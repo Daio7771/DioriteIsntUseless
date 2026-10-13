@@ -2,8 +2,10 @@ package daio7771.dioriteisntuseless.entity
 
 import daio7771.dioriteisntuseless.abuse.AbuseData
 import daio7771.dioriteisntuseless.abuse.AbuseMode
+import daio7771.dioriteisntuseless.abuse.visitor.MinerNotes
 import daio7771.dioriteisntuseless.abuse.visitor.MinerQuests
 import daio7771.dioriteisntuseless.abuse.visitor.MinerSpeech
+import daio7771.dioriteisntuseless.abuse.visitor.MinerState
 import daio7771.dioriteisntuseless.abuse.visitor.MinerTrades
 import daio7771.dioriteisntuseless.abuse.world.Visibility
 import daio7771.dioriteisntuseless.entity.ai.MinerGoals
@@ -69,6 +71,7 @@ import kotlin.math.sin
  * Right-clicking him: he greets them and pays and gives jobs (MinerSpeech, MinerQuests), then the
  * vanilla trading screen opens; when it is closed, his visit is over (he leaves without being seen
  * leaving). His lines come one at a time, and he does not leave while he still has something to say.
+ * At the key moments he also hands over a note (MinerNotes), in its place among his lines.
  *
  * At level 4 there is nothing to trade: as soon as they see him (or talk to him) he says goodbye,
  * and once the last line is said he is gone for good for that player.
@@ -81,9 +84,14 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
     /** He has already talked to the player in this visit: no second greeting or job reminder. */
     private var talked = false
 
-    /** What he still has to say, and ticks until the next line. */
-    private val lines = ArrayDeque<Component>()
+    /** What he still has to say or hand over, in order, and ticks until the next one. */
+    private val speech = ArrayDeque<Said>()
     private var lineCountdown = 0
+
+    private sealed interface Said {
+        class Line(val text: Component) : Said
+        class Note(val note: MinerNotes.Note) : Said
+    }
 
     /** His goodbye has started (level 4). */
     private var sayingGoodbye = false
@@ -101,7 +109,7 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
     private var dripCountdown = 0
     private var lastHmmAt = Int.MIN_VALUE / 2
 
-    override val busy: Boolean get() = tradingPlayer != null || lines.isNotEmpty()
+    override val busy: Boolean get() = tradingPlayer != null || speech.isNotEmpty()
 
     /** Trading or talking with the player: he stands and looks at them. */
     val isTalking: Boolean get() = busy
@@ -178,9 +186,9 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         if (!sayingGoodbye && distanceTo(player) <= GOODBYE_DISTANCE && Visibility.mightSee(player, boundingBox) &&
             mood == MinerSpeech.Mood.FAREWELL
         ) {
-            sayGoodbye()
+            sayGoodbye(player)
         }
-        tickLines(player)
+        tickSpeech(player)
     }
 
     // ---- Sounds (only the visited player hears them, and only from near enough)
@@ -288,15 +296,23 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         val data = AbuseData.get(player.server)
         val state = data.get(player.uuid)
         val mood = MinerSpeech.mood(state.level)
-        if (!talked) lines += MinerSpeech.greeting(player, state.miner, mood)
+        if (!talked) {
+            val greeting = MinerSpeech.greeting(player, state.miner, mood, !MinerNotes.given(state.miner, MinerNotes.Note.WARNING))
+            for ((index, line) in greeting.lines.withIndex()) {
+                speech += Said.Line(line)
+                // What he could not say out loud, he writes down: the note comes right after the cut.
+                if (index == 0 && greeting.cutOff) handOver(state.miner, MinerNotes.Note.WARNING)
+            }
+        }
         val jobBefore = state.miner.questType
-        lines += MinerQuests.onTalk(player, state, !talked, mood)
+        MinerQuests.onTalk(player, state, !talked, mood).forEach { speech += Said.Line(it) }
         // A new job is never of the same kind as the one before: a different kind means a new deal.
         if (state.miner.questType.isNotEmpty() && state.miner.questType != jobBefore) hmm()
+        if (state.level == MinerNotes.LEVEL_3_NOTE_LEVEL) handOver(state.miner, MinerNotes.Note.LEVEL_3)
         talked = true
         data.setDirty()
         if (mood == MinerSpeech.Mood.FAREWELL) {
-            if (!sayingGoodbye) sayGoodbye()
+            if (!sayingGoodbye) sayGoodbye(player)
             return
         }
         navigation.stop()
@@ -308,18 +324,36 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         if (player.containerMenu === player.inventoryMenu) tradingPlayer = null
     }
 
-    private fun sayGoodbye() {
+    private fun sayGoodbye(player: ServerPlayer) {
         sayingGoodbye = true
         talked = true
-        lines += MinerSpeech.farewell()
+        MinerSpeech.farewell().forEach { speech += Said.Line(it) }
+        handOver(AbuseData.get(player.server).get(player.uuid).miner, MinerNotes.Note.FAREWELL)
     }
 
-    /** One line at a time, each when the one before has been typed and read; the first one right away. */
-    private fun tickLines(player: ServerPlayer) {
-        if (lines.isEmpty()) return
+    /** Queues [note] after what he is saying, unless they already have it from him (or it is already queued). */
+    private fun handOver(miner: MinerState, note: MinerNotes.Note) {
+        if (MinerNotes.given(miner, note) || speech.any { it is Said.Note && it.note == note }) return
+        speech += Said.Note(note)
+    }
+
+    /**
+     * One thing at a time: each line when the one before has been typed and read, each note a
+     * moment after the line before it. The first one right away.
+     */
+    private fun tickSpeech(player: ServerPlayer) {
+        if (speech.isEmpty()) return
         if (--lineCountdown > 0) return
-        lineCountdown = MinerSpeech.say(player, id, lines.removeFirst(), mood)
-        if (lines.isEmpty() && sayingGoodbye) {
+        when (val next = speech.removeFirst()) {
+            is Said.Line -> lineCountdown = MinerSpeech.say(player, id, next.text, mood)
+            is Said.Note -> {
+                val data = AbuseData.get(player.server)
+                MinerNotes.give(player, this, data.get(player.uuid).miner, next.note)
+                data.setDirty()
+                lineCountdown = NOTE_PAUSE_TICKS
+            }
+        }
+        if (speech.isEmpty() && sayingGoodbye) {
             // Only now: if he went away halfway, he comes back to say it all.
             val data = AbuseData.get(player.server)
             data.get(player.uuid).miner.gone = true
@@ -387,6 +421,9 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
     companion object {
         private val DATA_MOOD: EntityDataAccessor<Byte> =
             SynchedEntityData.defineId(TheMinerEntity::class.java, EntityDataSerializers.BYTE)
+
+        /** After handing over a note, this long before his next line. */
+        private const val NOTE_PAUSE_TICKS = 30
 
         /** At level 4 he starts his goodbye when they see him this close. */
         private const val GOODBYE_DISTANCE = 8f

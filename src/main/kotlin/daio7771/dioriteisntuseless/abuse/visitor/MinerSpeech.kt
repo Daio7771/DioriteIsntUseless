@@ -49,13 +49,21 @@ object MinerSpeech {
         else -> Mood.FAREWELL
     }
 
-    /** The first thing he says in a visit, when they talk to him (one or two lines). */
-    fun greeting(player: ServerPlayer, miner: MinerState, mood: Mood): List<Component> = when {
-        mood == Mood.CALM -> listOf(pick(player, miner, "greeting", CALM_LINES))
-        mood == Mood.EAGER && player.random.nextFloat() < CUTOFF_CHANCE ->
-            listOf(pick(player, miner, "cutoff", CUTOFF_LINES), pick(player, miner, "recovery", RECOVERY_LINES))
-        mood == Mood.EAGER -> listOf(pick(player, miner, "greeting.eager", EAGER_LINES))
-        else -> emptyList()
+    /** His greeting: its lines, and whether it is a warning he cut off (the first line, then his recovery). */
+    class Greeting(val lines: List<Component>, val cutOff: Boolean)
+
+    /**
+     * The first thing he says in a visit, when they talk to him (one or two lines). At levels 2-3,
+     * sometimes ([CUTOFF_CHANCE]) a warning he cannot finish; always one if [mustCutOff] (his first
+     * one, which comes with a note: MinerNotes).
+     */
+    fun greeting(player: ServerPlayer, miner: MinerState, mood: Mood, mustCutOff: Boolean): Greeting = when {
+        mood == Mood.CALM -> Greeting(listOf(pick(player, miner, "greeting", CALM_LINES)), false)
+        mood == Mood.EAGER && (mustCutOff || player.random.nextFloat() < CUTOFF_CHANCE) -> Greeting(
+            listOf(pick(player, miner, "cutoff", CUTOFF_LINES), pick(player, miner, "recovery", RECOVERY_LINES)), true,
+        )
+        mood == Mood.EAGER -> Greeting(listOf(pick(player, miner, "greeting.eager", EAGER_LINES)), false)
+        else -> Greeting(emptyList(), false)
     }
 
     /** His goodbye at level 4, in order. */

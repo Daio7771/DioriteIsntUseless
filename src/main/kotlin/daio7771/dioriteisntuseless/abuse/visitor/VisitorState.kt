@@ -25,6 +25,9 @@ class MinerState {
     /** The last kind of job, so the next one is a different kind. */
     var lastQuestType = ""
 
+    /** The notes he has handed over in this cycle (MinerNotes.Note.bit). */
+    var notesGiven = 0
+
     /** How many trees, strikes or crystals the job asks for. */
     var questAmount = 0
 
@@ -51,6 +54,7 @@ class MinerState {
         clearQuest()
         lastQuestType = ""
         lastLine = ""
+        notesGiven = 0
     }
 
     fun save(): CompoundTag = CompoundTag().apply {
@@ -64,6 +68,7 @@ class MinerState {
         putLong("QuestStart", questStart)
         putBoolean("QuestRewardIron", questRewardIron)
         putInt("QuestRewardCount", questRewardCount)
+        putInt("NotesGiven", notesGiven)
     }
 
     fun load(tag: CompoundTag) {
@@ -77,6 +82,7 @@ class MinerState {
         questStart = tag.getLong("QuestStart").coerceAtLeast(0)
         questRewardIron = tag.getBoolean("QuestRewardIron")
         questRewardCount = tag.getInt("QuestRewardCount").coerceIn(0, MAX_REWARD)
+        notesGiven = tag.getInt("NotesGiven")
         // A job that makes no sense (an unknown kind, edited data) is dropped: he gives a new one.
         if (MinerQuests.Type.byId(questType) == null || questAmount <= 0) clearQuest()
     }
