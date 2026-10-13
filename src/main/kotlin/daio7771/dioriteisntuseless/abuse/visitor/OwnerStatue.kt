@@ -5,6 +5,7 @@ import daio7771.dioriteisntuseless.abuse.AbuseMode
 import daio7771.dioriteisntuseless.abuse.AbuseTracker
 import daio7771.dioriteisntuseless.abuse.PlayerAbuse
 import daio7771.dioriteisntuseless.config.ModConfig
+import daio7771.dioriteisntuseless.entity.TheMinerEntity
 import daio7771.dioriteisntuseless.entity.UsefulOwnerEntity
 import daio7771.dioriteisntuseless.registry.ModItems
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
@@ -19,6 +20,7 @@ import net.minecraft.sounds.SoundSource
 import net.minecraft.stats.Stat
 import net.minecraft.stats.Stats
 import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.phys.Vec3
 import java.util.UUID
 
 /**
@@ -28,6 +30,8 @@ import java.util.UUID
  *
  * - A while later, at a calm moment, it appears silently 4-6 blocks behind them, out of sight,
  *   on solid ground and never inside a building (Visitors.Kind.OWNER). It stands still.
+ * - If The Miner is visiting and close to that spot, he knows: [OMEN_TICKS] before it appears, he
+ *   turns his head towards the spot (TheMinerEntity.foresee). It never comes while he is talking.
  * - [SEEN_TICKS] (3 s) after they first SEE it (Visibility.sees), a loud, dry crack of stone and
  *   it is gone, leaving diorite dust. No flashes. With abuseMode.jumpscares off, the crack is soft.
  * - Only then does it count as shown. If it goes away before (they disconnect, go too far, change
@@ -46,11 +50,36 @@ object OwnerStatue {
     private const val MIN_DELAY_TICKS = 30 * 20L
     private const val MAX_DELAY_TICKS = 2 * 60 * 20L
 
+    /** The Miner turns his head to the spot this long before it appears there. */
+    private const val OMEN_TICKS = 4 * 20
+
+    /** ...and keeps looking there this long after it appears. */
+    private const val OMEN_AFTER_TICKS = 4 * 20
+
+    /** The Miner only notices if he is this close to the spot. */
+    private const val OMEN_DISTANCE = 16.0
+
+    /** Where to look at it: about its eyes (it is 1.1 times as tall as a player). */
+    private const val EYE_HEIGHT = 1.75
+
     /** PlayerAbuse.playTicks before which it does not try again. Not saved: a reload starts a new wait. */
     private val nextTryAt = HashMap<UUID, Long>()
 
+    /** It is about to appear at [spot] (The Miner is already looking there) at PlayerAbuse.playTicks [dueAt]. */
+    private class Omen(val spot: Vec3, val dueAt: Long)
+
+    private val omens = HashMap<UUID, Omen>()
+
     fun init() {
-        ServerLifecycleEvents.SERVER_STOPPED.register { nextTryAt.clear() }
+        ServerLifecycleEvents.SERVER_STOPPED.register {
+            nextTryAt.clear()
+            omens.clear()
+        }
+    }
+
+    /** It is not coming any more for [uuid] (they disconnected, "Start over"). */
+    fun forget(uuid: UUID) {
+        omens.remove(uuid)
     }
 
     /** From ServerPlayerMixin with every statistic: worn-out dioritine tools are counted. */
@@ -69,6 +98,16 @@ object OwnerStatue {
 
     /** From the AbuseTracker player tick (every few ticks). */
     fun tick(player: ServerPlayer, state: PlayerAbuse) {
+        val omen = omens[player.uuid]
+        if (omen != null) {
+            if (state.playTicks < omen.dueAt) return
+            omens.remove(player.uuid)
+            // If they turned towards the spot meanwhile (or trouble came), it does not come: he looked at nothing.
+            if (Visitors.isCalm(player) && VisitorSpots.stillHidden(player, Visitors.Kind.OWNER.type(), omen.spot)) {
+                bring(player, omen.spot)
+            }
+            return
+        }
         val owner = state.owner
         if (owner.statueShown || !toolsWornOut(owner)) return
         if (state.level >= AbuseTracker.LEVEL_FINAL) return  // the ending has its own appearance
@@ -78,10 +117,28 @@ object OwnerStatue {
             return
         }
         if (state.playTicks < waitUntil || Visitors.current(player.uuid, Visitors.Kind.OWNER) != null) return
-        // Never together with The Miner.
-        if (Visitors.current(player.uuid, Visitors.Kind.MINER) != null || !Visitors.isCalm(player)) return
+        if (minerTalking(player) || !Visitors.isCalm(player)) return
         scheduleTry(player, state)
-        bring(player)
+        approach(player, state)
+    }
+
+    /** The Miner is trading or talking with them: it does not interrupt. */
+    private fun minerTalking(player: ServerPlayer): Boolean =
+        (Visitors.current(player.uuid, Visitors.Kind.MINER) as? TheMinerEntity)?.isTalking == true
+
+    /**
+     * Picks its spot and brings it there: right away or, if The Miner is close to the spot, after
+     * he has turned his head there. Returns false if there is no spot right now.
+     */
+    private fun approach(player: ServerPlayer, state: PlayerAbuse): Boolean {
+        val spot = Visitors.findSpot(player, Visitors.Kind.OWNER) ?: return false
+        val miner = Visitors.current(player.uuid, Visitors.Kind.MINER) as? TheMinerEntity
+        if (miner == null || miner.isTalking || miner.distanceToSqr(spot) > OMEN_DISTANCE * OMEN_DISTANCE) {
+            return bring(player, spot)
+        }
+        miner.foresee(spot.add(0.0, EYE_HEIGHT, 0.0), OMEN_TICKS + OMEN_AFTER_TICKS)
+        omens[player.uuid] = Omen(spot, state.playTicks + OMEN_TICKS)
+        return true
     }
 
     /** [TOOLS_NEEDED] axes or [TOOLS_NEEDED] pickaxes worn out: each kind on its own, never added together. */
@@ -92,8 +149,8 @@ object OwnerStatue {
         nextTryAt[player.uuid] = state.playTicks + MIN_DELAY_TICKS + (player.random.nextDouble() * (MAX_DELAY_TICKS - MIN_DELAY_TICKS)).toLong()
     }
 
-    private fun bring(player: ServerPlayer): Boolean {
-        val statue = Visitors.bring(player, Visitors.Kind.OWNER, -1) as? UsefulOwnerEntity ?: return false
+    private fun bring(player: ServerPlayer, spot: Vec3): Boolean {
+        val statue = Visitors.bring(player, Visitors.Kind.OWNER, -1, spot) as? UsefulOwnerEntity ?: return false
         statue.becomeStatue()
         return true
     }
@@ -140,11 +197,17 @@ object OwnerStatue {
     private const val LOUD_VOLUME = 2.0f
     private const val SOFT_VOLUME = 0.3f
 
-    /** For the testing command: the real statue, now (without the tools or the wait). False if there is no spot. */
+    /**
+     * For the testing command: the real statue, now (without the tools or the wait; with The Miner
+     * near, after he looks). False if there is no spot.
+     */
     fun testNow(player: ServerPlayer): Boolean {
         if (!AbuseMode.active) return false
         var brought = false
-        AbuseMode.guard("test statue") { brought = bring(player) }
+        AbuseMode.guard("test statue") {
+            omens.remove(player.uuid)
+            brought = approach(player, AbuseData.get(player.server).get(player.uuid))
+        }
         return brought
     }
 }

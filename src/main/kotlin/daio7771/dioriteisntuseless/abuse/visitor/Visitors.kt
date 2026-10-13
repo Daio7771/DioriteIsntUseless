@@ -88,8 +88,9 @@ object Visitors {
         current(uuid, kind)?.discard()
     }
 
-    /** Sends every visitor of [uuid] away at once (disconnecting, "Start over"). */
+    /** Sends every visitor of [uuid] away at once (disconnecting, "Start over"), and the statue on its way too. */
     fun dismissAll(uuid: UUID) {
+        OwnerStatue.forget(uuid)
         active.remove(uuid)?.forEach { it.discard() }
     }
 

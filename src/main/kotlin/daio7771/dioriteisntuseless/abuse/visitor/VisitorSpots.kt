@@ -1,6 +1,7 @@
 package daio7771.dioriteisntuseless.abuse.visitor
 
 import daio7771.dioriteisntuseless.abuse.world.Visibility
+import daio7771.dioriteisntuseless.entity.VisitorEntity
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerPlayer
@@ -20,7 +21,7 @@ import kotlin.math.sin
  *   looking up or down). With `inFront`, the opposite: in front of them, in plain sight (only the
  *   ending does that).
  * - Standing on solid ground (not magma or a campfire), with room for its whole body and no
- *   liquid in it, inside the world border.
+ *   liquid in it, inside the world border, and not where another visitor stands.
  * - With a clear line to the player: in the same open space as them, never on the other side of a
  *   wall, inside a building they are not in.
  */
@@ -50,6 +51,9 @@ object VisitorSpots {
         return null
     }
 
+    /** [spot] (found by [find], behind them) is still free and out of their sight. */
+    fun stillHidden(player: ServerPlayer, type: EntityType<*>, spot: Vec3): Boolean = fits(player, type, spot, false)
+
     private fun fits(player: ServerPlayer, type: EntityType<*>, spot: Vec3, inFront: Boolean): Boolean {
         val level = player.serverLevel()
         val feet = BlockPos.containing(spot)
@@ -61,6 +65,8 @@ object VisitorSpots {
         }
         val box = type.getAABB(spot.x, spot.y, spot.z)
         if (!level.worldBorder.isWithinBounds(box) || !level.noCollision(box) || level.containsAnyLiquid(box)) return false
+        // Not inside another visitor (The Miner may be walking around).
+        if (level.getEntitiesOfClass(VisitorEntity::class.java, box).isNotEmpty()) return false
         val center = box.center
         return clearPath(player, center) && clearPath(player, Vec3(center.x, box.maxY - 0.1, center.z)) &&
             (inFront || !Visibility.mightSee(player, box))

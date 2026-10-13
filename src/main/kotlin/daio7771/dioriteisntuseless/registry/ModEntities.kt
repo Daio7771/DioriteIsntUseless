@@ -3,13 +3,15 @@ package daio7771.dioriteisntuseless.registry
 import daio7771.dioriteisntuseless.Dioriteisntuseless
 import daio7771.dioriteisntuseless.entity.TheMinerEntity
 import daio7771.dioriteisntuseless.entity.UsefulOwnerEntity
+import daio7771.dioriteisntuseless.entity.VisitorEntity
 import net.fabricmc.fabric.api.`object`.builder.v1.entity.FabricDefaultAttributeRegistry
 import net.minecraft.core.Registry
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EntityType
-import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.MobCategory
+import net.minecraft.world.entity.ai.attributes.Attributes
 
 /**
  * The visitors (VisitorEntity). They are never saved with the world and cannot be summoned:
@@ -43,9 +45,15 @@ object ModEntities {
         return Registry.register(BuiltInRegistries.ENTITY_TYPE, id, type)
     }
 
-    /** Call from onInitialize: accessing the object registers the types; here, their attributes. */
+    /**
+     * Call from onInitialize: accessing the object registers the types; here, their attributes
+     * (they are mobs: their navigation needs the mob ones) and what right-clicking them does.
+     */
     fun init() {
-        FabricDefaultAttributeRegistry.register(THE_MINER, LivingEntity.createLivingAttributes())
-        FabricDefaultAttributeRegistry.register(USEFUL_OWNER, LivingEntity.createLivingAttributes())
+        FabricDefaultAttributeRegistry.register(
+            THE_MINER, Mob.createMobAttributes().add(Attributes.MOVEMENT_SPEED, TheMinerEntity.MOVEMENT_SPEED)
+        )
+        FabricDefaultAttributeRegistry.register(USEFUL_OWNER, Mob.createMobAttributes())
+        VisitorEntity.init()
     }
 }

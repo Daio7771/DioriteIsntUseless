@@ -2,15 +2,18 @@ package daio7771.dioriteisntuseless.entity
 
 import daio7771.dioriteisntuseless.abuse.AbuseMode
 import daio7771.dioriteisntuseless.abuse.world.Visibility
+import net.fabricmc.fabric.api.event.player.UseEntityCallback
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.tags.DamageTypeTags
-import net.minecraft.util.Mth
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
 import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.HumanoidArm
-import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.PathfinderMob
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import java.util.UUID
@@ -20,18 +23,26 @@ import kotlin.math.atan2
  * A figure that visits one player (The Miner, The "Useful" Owner). The rules every visitor follows:
  *
  * - Only the visited player sees it ([broadcastToPlayer]): for anyone else it does not exist.
- * - It cannot be hurt, pushed, carried or targeted, makes no sound and does not attack.
- * - It is never saved with the world (its type is noSave): everything it has to remember about
- *   the player lives in their Abuse Mode state. If the world closes, it is simply gone.
+ * - It cannot be hurt, pushed, carried, leashed, named or targeted, makes no sound of its own and
+ *   does not attack.
+ * - It is never saved with the world (its type is noSave) and never despawns on its own: everything
+ *   it has to remember about the player lives in their Abuse Mode state. If the world closes, it is
+ *   simply gone.
  * - It goes away by itself as soon as something is off: the player is no longer in its world or
  *   is too far away, or the Abuse Mode is disabled or has stopped after an error.
  *
- * Everything that decides goes on the server; the client only draws it.
+ * It is a mob so it can use Minecraft's goals (The Miner walks and looks around with them), but it
+ * has no goals unless the subclass adds them. Everything that decides goes on the server; the
+ * client only draws it.
  */
-abstract class VisitorEntity(type: EntityType<out VisitorEntity>, level: Level) : LivingEntity(type, level) {
+abstract class VisitorEntity(type: EntityType<out VisitorEntity>, level: Level) : PathfinderMob(type, level) {
 
     /** The only player who sees it. Set once, before it is added to the world. */
     var visitedPlayer: UUID? = null
+        private set
+
+    /** The visited player, updated every server tick (null once they are gone). */
+    var visiting: ServerPlayer? = null
         private set
 
     /** Ticks until it starts leaving, or -1 if it stays until it is sent away. */
@@ -46,11 +57,15 @@ abstract class VisitorEntity(type: EntityType<out VisitorEntity>, level: Level) 
         isInvulnerable = true
     }
 
-    /** Before adding it to the world: who it visits and for how long ([ticks] -1: until sent away). */
+    /** Before adding it to the world, already in its spot: who it visits and for how long ([ticks] -1: until sent away). */
     fun visit(player: ServerPlayer, ticks: Int) {
         visitedPlayer = player.uuid
         ticksLeft = ticks
+        onArrival(player)
     }
+
+    /** At the end of [visit]: it is in its spot, not yet in the world. */
+    protected open fun onArrival(player: ServerPlayer) {}
 
     /** Starts leaving without ever vanishing in front of the player's eyes. */
     fun leave() {
@@ -61,9 +76,16 @@ abstract class VisitorEntity(type: EntityType<out VisitorEntity>, level: Level) 
         player.uuid == visitedPlayer && super.broadcastToPlayer(player)
 
     override fun tick() {
-        super.tick()
-        if (level().isClientSide || isRemoved) return
-        AbuseMode.guard("visitor tick") { serverTick() }
+        if (level().isClientSide) {
+            super.tick()
+            return
+        }
+        // The vanilla tick too: its goals (The Miner's) run inside it, and an error there must not
+        // crash the server (golden rule 1).
+        AbuseMode.guard("visitor tick") {
+            super.tick()
+            if (!isRemoved) serverTick()
+        }
         // Also after an error inside it: with the Abuse Mode stopped, no visitor stays.
         if (!AbuseMode.active && !isRemoved) discard()
     }
@@ -71,24 +93,32 @@ abstract class VisitorEntity(type: EntityType<out VisitorEntity>, level: Level) 
     private fun serverTick() {
         val player = visitedPlayer?.let { level().server?.playerList?.getPlayer(it) }
         if (player == null || player.level() !== level() || distanceToSqr(player) > MAX_DISTANCE_SQR) {
+            visiting = null
             discard()
             return
         }
+        visiting = player
         visitTick(player)
         if (isRemoved || busy) return
         if (ticksLeft > 0 && --ticksLeft == 0) leave()
         if (leaving && (!Visibility.mightSee(player, boundingBox) || ++leavingTicks >= MAX_LEAVING_TICKS)) discard()
     }
 
-    /** Busy with the player (trading): its time does not run and it does not leave meanwhile. */
+    /** Busy with the player (trading, talking): its time does not run and it does not leave meanwhile. */
     protected open val busy: Boolean get() = false
 
-    /** Every server tick while it is with [player]. */
+    /** Every server tick while it is with [player] (after its goals have run). */
     protected open fun visitTick(player: ServerPlayer) {}
+
+    /**
+     * Right-clicked by [player] (see [init]): on the client, whether to send it to the server; on
+     * the server, what it does. Nothing by default, and never anything vanilla does with mobs.
+     */
+    protected open fun use(player: Player, hand: InteractionHand): InteractionResult = InteractionResult.FAIL
 
     /** Turns body and head towards [target] at once (when it appears). */
     fun face(target: Entity) {
-        val yaw = yawTowards(target)
+        val yaw = (Math.toDegrees(atan2(target.z - z, target.x - x)) - 90.0).toFloat()
         yRot = yaw
         yRotO = yaw
         yHeadRot = yaw
@@ -96,19 +126,6 @@ abstract class VisitorEntity(type: EntityType<out VisitorEntity>, level: Level) 
         yBodyRot = yaw
         yBodyRotO = yaw
     }
-
-    /** Turns the head towards [target] at most [maxStep] degrees per tick; the body follows on its own. */
-    protected fun turnHeadTowards(target: Entity, maxStep: Float) {
-        val yaw = Mth.approachDegrees(yHeadRot, yawTowards(target), maxStep)
-        yHeadRot = yaw
-        yRot = yaw
-        val dy = target.eyeY - eyeY
-        val horizontal = Math.sqrt(distanceToSqr(target.x, y, target.z))
-        xRot = Mth.approachDegrees(xRot, (-Math.toDegrees(atan2(dy, horizontal))).toFloat(), maxStep)
-    }
-
-    private fun yawTowards(target: Entity): Float =
-        (Math.toDegrees(atan2(target.z - z, target.x - x)) - 90.0).toFloat()
 
     // ---- Untouchable and harmless
 
@@ -140,6 +157,14 @@ abstract class VisitorEntity(type: EntityType<out VisitorEntity>, level: Level) 
 
     override fun startRiding(vehicle: Entity, force: Boolean): Boolean = false
 
+    override fun canBeLeashed(player: Player): Boolean = false
+
+    // ---- Never despawns: it goes away by its own rules (serverTick), and nothing saves it
+
+    override fun checkDespawn() {}
+
+    override fun removeWhenFarAway(distance: Double): Boolean = false
+
     // ---- No equipment
 
     override fun getArmorSlots(): Iterable<ItemStack> = emptyList()
@@ -156,5 +181,21 @@ abstract class VisitorEntity(type: EntityType<out VisitorEntity>, level: Level) 
 
         /** If the player keeps looking at it for this long while it is leaving, it vanishes anyway. */
         private const val MAX_LEAVING_TICKS = 60 * 20
+
+        /**
+         * Right-clicking a visitor only does what [use] says. Mob.interact is final and would first
+         * try name tags, leads and spawn eggs on it, so the click is caught before vanilla sees it.
+         * The first call of a click carries the exact point hit (interactAt): that one is left to
+         * vanilla, which does nothing with mobs, so the second call (interact) comes as usual.
+         */
+        fun init() {
+            UseEntityCallback.EVENT.register { player, _, hand, entity, hitResult ->
+                if (entity !is VisitorEntity || hitResult != null || player.isSpectator) {
+                    InteractionResult.PASS
+                } else {
+                    entity.use(player, hand)
+                }
+            }
+        }
     }
 }
