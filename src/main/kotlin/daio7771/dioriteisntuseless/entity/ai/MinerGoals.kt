@@ -21,8 +21,8 @@ import java.util.EnumSet
 
 /**
  * What The Miner does, as Minecraft goals (TheMinerEntity explains the behavior by level). The
- * smaller the number, the more it matters: looking where the statue will appear beats talking,
- * talking beats stepping back, and so on. Walking ([LimpingStroll]) only takes his legs, so he can
+ * smaller the number, the more it matters: looking where the statue will appear beats leaving,
+ * leaving beats talking (talking to him makes him stay), talking beats stepping back, and so on. Walking ([LimpingStroll]) only takes his legs, so he can
  * watch the player ([WatchPlayer]) while he walks.
  *
  * Every goal needs the player close by (TheMinerEntity.nearPlayer): with nobody near, nothing runs.
@@ -35,13 +35,14 @@ object MinerGoals {
 
     fun addTo(miner: TheMinerEntity, goals: GoalSelector) {
         goals.addGoal(0, LookAtOmen(miner))
-        goals.addGoal(1, AttendPlayer(miner))
-        goals.addGoal(2, StepBack(miner))
-        goals.addGoal(3, StareAtPlayer(miner))
-        goals.addGoal(4, StareAtDiorite(miner))
-        goals.addGoal(5, LimpingStroll(miner))
-        goals.addGoal(6, WatchPlayer(miner))
-        goals.addGoal(7, LookAround(miner))
+        goals.addGoal(1, WalkAway(miner))
+        goals.addGoal(2, AttendPlayer(miner))
+        goals.addGoal(3, StepBack(miner))
+        goals.addGoal(4, StareAtPlayer(miner))
+        goals.addGoal(5, StareAtDiorite(miner))
+        goals.addGoal(6, LimpingStroll(miner))
+        goals.addGoal(7, WatchPlayer(miner))
+        goals.addGoal(8, LookAround(miner))
     }
 
     /** Head turning speeds, in degrees per tick: slow, he is old. Staring is slower still. */
@@ -77,6 +78,39 @@ object MinerGoals {
 
         override fun tick() {
             miner.omenSpot?.let { lookAt(miner, it, SLOW_TURN_SPEED) }
+        }
+    }
+
+    /**
+     * Leaving (no answer for 15 s, his time is up, or after his goodbye): he turns his back on them
+     * and limps away, farther and farther, until he is out of their sight and gone (VisitorEntity).
+     * He looks where he walks, not at them.
+     */
+    private class WalkAway(miner: TheMinerEntity) : MinerGoal(miner, Flag.MOVE, Flag.LOOK) {
+        private var nextPathAt = 0
+
+        override fun canUse(): Boolean = miner.isLeaving && !miner.isTalking
+
+        override fun start() {
+            nextPathAt = 0
+        }
+
+        override fun tick() {
+            if (!miner.navigation.isDone || now < nextPathAt) return
+            nextPathAt = now + REPATH_TICKS
+            val from = miner.visiting?.position() ?: return
+            val target = LandRandomPos.getPosAway(miner, DISTANCE, 4, from) ?: return
+            miner.navigation.moveTo(target.x, target.y, target.z, SPEED)
+        }
+
+        override fun stop() {
+            miner.navigation.stop()
+        }
+
+        companion object {
+            const val DISTANCE = 10
+            const val SPEED = 0.5
+            const val REPATH_TICKS = 20
         }
     }
 

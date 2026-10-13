@@ -17,8 +17,8 @@ import net.minecraft.world.item.ItemStack
  *   at any level.
  * - After that he comes back on his own, every [visitInterval] ticks played (2-3 game days at
  *   levels 0-1, 1-2 at the higher ones), counted from his last arrival.
- * - Each visit lasts [STAY_TICKS] (or until they close his trades), then he leaves without being
- *   seen leaving (VisitorEntity.leave).
+ * - Each visit lasts until he has waited 15 s for them in vain (TheMinerEntity), [STAY_TICKS] at
+ *   most; then he limps away and is gone once out of their sight (VisitorEntity.leave).
  *
  * He always arrives out of sight, at a calm moment: if it is not one, or there is no spot for
  * him, he tries again a few seconds later. At the ending he does not come.

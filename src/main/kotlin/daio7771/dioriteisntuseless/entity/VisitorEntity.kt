@@ -50,7 +50,8 @@ abstract class VisitorEntity(type: EntityType<out VisitorEntity>, level: Level) 
     private var ticksLeft = -1
 
     /** Leaving: it vanishes as soon as the player is not looking (or after [MAX_LEAVING_TICKS]). */
-    private var leaving = false
+    var isLeaving = false
+        private set
     private var leavingTicks = 0
 
     init {
@@ -70,7 +71,19 @@ abstract class VisitorEntity(type: EntityType<out VisitorEntity>, level: Level) 
 
     /** Starts leaving without ever vanishing in front of the player's eyes. */
     fun leave() {
-        leaving = true
+        if (isLeaving) return
+        isLeaving = true
+        leavingTicks = 0
+        onLeave()
+    }
+
+    /** When it starts leaving. */
+    protected open fun onLeave() {}
+
+    /** It was leaving, but it stays after all (The Miner, when they talk to him as he walks away). */
+    protected fun stay() {
+        isLeaving = false
+        leavingTicks = 0
     }
 
     override fun broadcastToPlayer(player: ServerPlayer): Boolean =
@@ -102,7 +115,7 @@ abstract class VisitorEntity(type: EntityType<out VisitorEntity>, level: Level) 
         visitTick(player)
         if (isRemoved || busy) return
         if (ticksLeft > 0 && --ticksLeft == 0) leave()
-        if (leaving && (!Visibility.mightSee(player, boundingBox) || ++leavingTicks >= MAX_LEAVING_TICKS)) discard()
+        if (isLeaving && (!Visibility.mightSee(player, boundingBox) || ++leavingTicks >= MAX_LEAVING_TICKS)) discard()
     }
 
     /** Busy with the player (trading, talking): its time does not run and it does not leave meanwhile. */

@@ -68,10 +68,16 @@ import kotlin.math.sin
  * - A deal (a trade, or a new job): a deep "hmm".
  * - Level 4: nothing at all. No cough, no sigh, ever.
  *
- * Right-clicking him: he greets them and pays and gives jobs (MinerSpeech, MinerQuests), then the
- * vanilla trading screen opens; when it is closed, his visit is over (he leaves without being seen
- * leaving). His lines come one at a time, and he does not leave while he still has something to say.
- * At the key moments he also hands over a note (MinerNotes), in its place among his lines.
+ * Right-clicking him: he greets them and pays and gives jobs (MinerSpeech, MinerQuests); once he
+ * has said it all (and they have had time to read it), the vanilla trading screen opens, if they
+ * are still near. His lines come one at a time, and he does not leave while he still has something
+ * to say. At the key moments he also hands over a note (MinerNotes), in its place among his lines.
+ * On his first visit, when they come near, he tosses them his instructions book.
+ *
+ * He waits for them: once they have seen him, if they stay within [NOTICE_DISTANCE] without
+ * talking to him for [NO_RESPONSE_TICKS] (15 s), he leaves (far away, the count stops). Leaving,
+ * he turns and limps away, and is gone once out of their sight (VisitorEntity); talking to him
+ * as he goes makes him stay.
  *
  * At level 4 there is nothing to trade: as soon as they see him (or talk to him) he says goodbye,
  * and once the last line is said he is gone for good for that player.
@@ -104,14 +110,24 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         private set
     private var omenTicks = 0
 
+    /** Once he has finished talking, he opens his trades for this player (if they are still near). */
+    private var tradeAfterTalk: ServerPlayer? = null
+
+    /** They have seen him in this visit: from then on, he only waits [NO_RESPONSE_TICKS] for them. */
+    private var noticed = false
+    private var unansweredTicks = 0
+
+    /** His instructions book: already tossed, or they already had it. */
+    private var instructionsDone = false
+
     /** Ticks until his next pickaxe tap and his next drip; when his last "hmm" was. */
     private var tapCountdown = 0
     private var dripCountdown = 0
     private var lastHmmAt = Int.MIN_VALUE / 2
 
-    override val busy: Boolean get() = tradingPlayer != null || speech.isNotEmpty()
+    override val busy: Boolean get() = tradingPlayer != null || speech.isNotEmpty() || tradeAfterTalk != null
 
-    /** Trading or talking with the player: he stands and looks at them. */
+    /** Trading or talking with the player (or about to open his trades): he stands and looks at them. */
     val isTalking: Boolean get() = busy
 
     /** His mood with the visited player. Synced, so the client knows it too (his body, his voice). */
@@ -146,11 +162,22 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
 
     override fun onArrival(player: ServerPlayer) {
         arrivedCovered = isCovered(blockPosition())
-        restrictTo(blockPosition(), if (arrivedCovered) COVERED_ROAM_RADIUS else ROAM_RADIUS)
+        roamHere()
         updateMood(player)
         // He arrives in silence: the first drip and the first tap come a while later.
         dripCountdown = DRIP_MIN_TICKS + random.nextInt(DRIP_EXTRA_TICKS + 1)
         tapCountdown = TAP_RESUME_MIN_TICKS + random.nextInt(TAP_RESUME_EXTRA_TICKS + 1)
+    }
+
+    /** He walks a few blocks around where he is: in the open, or less under a roof (caves, houses). */
+    private fun roamHere() {
+        restrictTo(blockPosition(), if (arrivedCovered) COVERED_ROAM_RADIUS else ROAM_RADIUS)
+    }
+
+    /** Leaving, he may walk beyond his few blocks (MinerGoals' walk away); his trades will not open. */
+    override fun onLeave() {
+        clearRestriction()
+        tradeAfterTalk = null
     }
 
     /**
@@ -179,16 +206,55 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
 
     override fun visitTick(player: ServerPlayer) {
         if (tickCount % MOOD_CHECK_TICKS == 0) updateMood(player)
-        // Out of reach of his goals, or at level 4: he stays where he is.
-        if (mood == MinerSpeech.Mood.FAREWELL || nearPlayer == null) navigation.stop()
+        // Out of reach of his goals, or at level 4 (unless he is leaving): he stays where he is.
+        if ((mood == MinerSpeech.Mood.FAREWELL && !isLeaving) || nearPlayer == null) navigation.stop()
         if (omenTicks > 0 && --omenTicks == 0) omenSpot = null
         tickSounds()
+        tickInstructions(player)
+        tickPatience(player)
         if (!sayingGoodbye && distanceTo(player) <= GOODBYE_DISTANCE && Visibility.mightSee(player, boundingBox) &&
             mood == MinerSpeech.Mood.FAREWELL
         ) {
             sayGoodbye(player)
         }
         tickSpeech(player)
+    }
+
+    /**
+     * His first visit (in each cycle): when they come within [THROW_DISTANCE] and he can see them,
+     * he tosses his instructions book at their feet (MinerNotes). Not at level 4.
+     */
+    private fun tickInstructions(player: ServerPlayer) {
+        if (instructionsDone || tickCount % INSTRUCTIONS_CHECK_TICKS != 0 || busy || isLeaving) return
+        if (mood == MinerSpeech.Mood.FAREWELL) return
+        val data = AbuseData.get(player.server)
+        val miner = data.get(player.uuid).miner
+        if (MinerNotes.given(miner, MinerNotes.Note.INSTRUCTIONS)) {
+            instructionsDone = true
+            return
+        }
+        if (distanceToSqr(player) > THROW_DISTANCE * THROW_DISTANCE || !hasLineOfSight(player)) return
+        swing(InteractionHand.MAIN_HAND)
+        MinerNotes.throwTo(player, this, miner, MinerNotes.Note.INSTRUCTIONS)
+        data.setDirty()
+        instructionsDone = true
+        // A book landing at their feet: they know he is here.
+        noticed = true
+    }
+
+    /**
+     * Once they have seen him: [NO_RESPONSE_TICKS] within [NOTICE_DISTANCE] without talking to him
+     * and he leaves. Farther away, the count waits; talking (or trading) starts it again.
+     */
+    private fun tickPatience(player: ServerPlayer) {
+        if (isLeaving || sayingGoodbye) return
+        if (busy) {
+            unansweredTicks = 0
+            return
+        }
+        if (!noticed && Visibility.sees(player, boundingBox)) noticed = true
+        if (!noticed || distanceToSqr(player) > NOTICE_DISTANCE * NOTICE_DISTANCE) return
+        if (++unansweredTicks >= NO_RESPONSE_TICKS) leave()
     }
 
     // ---- Sounds (only the visited player hears them, and only from near enough)
@@ -292,7 +358,15 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
     }
 
     private fun talk(player: ServerPlayer) {
-        if (tradingPlayer != null || !AbuseMode.active) return
+        // One thing at a time: while he talks (or trades), clicking him again does nothing.
+        if (busy || !AbuseMode.active) return
+        if (isLeaving) {
+            // His goodbye is final; otherwise they answered after all, and he stays.
+            if (sayingGoodbye) return
+            stay()
+            roamHere()
+        }
+        unansweredTicks = 0
         val data = AbuseData.get(player.server)
         val state = data.get(player.uuid)
         val mood = MinerSpeech.mood(state.level)
@@ -316,8 +390,23 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
             return
         }
         navigation.stop()
+        tradeAfterTalk = player
+        // Nothing to say (a second talk in the same visit): the trades open right away.
+        if (speech.isEmpty()) openTrades(player)
+    }
+
+    /** After he has spoken: his trading screen, with the note at its top, if they are still near and not in another screen. */
+    private fun openTrades(player: ServerPlayer) {
+        tradeAfterTalk = null
+        if (!player.isAlive || player.level() !== level() || distanceToSqr(player) > TRADE_DISTANCE * TRADE_DISTANCE ||
+            player.containerMenu !== player.inventoryMenu
+        ) {
+            return
+        }
+        val state = AbuseData.get(player.server).get(player.uuid)
+        navigation.stop()
         offers = MinerTrades.offersFor(state.level)
-        MinerQuests.sendNote(player, state, mood)
+        MinerQuests.sendNote(player, state, MinerSpeech.mood(state.level))
         tradingPlayer = player
         openTradingScreen(player, displayName, 0)
         // If the screen could not open, he is not left waiting for nobody.
@@ -339,10 +428,15 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
 
     /**
      * One thing at a time: each line when the one before has been typed and read, each note a
-     * moment after the line before it. The first one right away.
+     * moment after the line before it. The first one right away. After the last one has been read,
+     * his trades open.
      */
     private fun tickSpeech(player: ServerPlayer) {
-        if (speech.isEmpty()) return
+        if (speech.isEmpty()) {
+            val trader = tradeAfterTalk ?: return
+            if (--lineCountdown <= 0) openTrades(trader)
+            return
+        }
         if (--lineCountdown > 0) return
         when (val next = speech.removeFirst()) {
             is Said.Line -> lineCountdown = MinerSpeech.say(player, id, next.text, mood)
@@ -370,11 +464,10 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
 
     // ---- Merchant
 
-    /** MerchantMenu.removed passes null: the trading screen was closed, so his visit is over. */
+    /** MerchantMenu.removed passes null: the trading screen was closed. He waits for them again ([tickPatience]). */
     override fun setTradingPlayer(player: Player?) {
-        val wasTrading = tradingPlayer != null
         tradingPlayer = player
-        if (wasTrading && player == null && !level().isClientSide) leave()
+        if (player == null) unansweredTicks = 0
     }
 
     override fun getTradingPlayer(): Player? = tradingPlayer
@@ -410,7 +503,9 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
      */
     private class MinerBodyControl(private val miner: TheMinerEntity) : BodyRotationControl(miner) {
         override fun clientTick() {
-            if (miner.mood != MinerSpeech.Mood.FAREWELL) {
+            // Walking (also away, after his goodbye), the body follows his steps as usual.
+            val moving = (miner.x - miner.xo) * (miner.x - miner.xo) + (miner.z - miner.zo) * (miner.z - miner.zo) > MOVING_SQR
+            if (miner.mood != MinerSpeech.Mood.FAREWELL || moving) {
                 super.clientTick()
                 return
             }
@@ -421,6 +516,20 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
     companion object {
         private val DATA_MOOD: EntityDataAccessor<Byte> =
             SynchedEntityData.defineId(TheMinerEntity::class.java, EntityDataSerializers.BYTE)
+
+        /** Vanilla's threshold for "moving" (BodyRotationControl). */
+        private const val MOVING_SQR = 2.5000003E-7
+
+        /** He waits this long for them to talk to him, once they have seen him and while they are this close. */
+        const val NO_RESPONSE_TICKS = 15 * 20
+        const val NOTICE_DISTANCE = 8.0
+
+        /** His trades open after he has spoken only if they are still this close. */
+        private const val TRADE_DISTANCE = 8.0
+
+        /** He tosses his instructions book when they come this close (and checks this often). */
+        private const val THROW_DISTANCE = 6.0
+        private const val INSTRUCTIONS_CHECK_TICKS = 10
 
         /** After handing over a note, this long before his next line. */
         private const val NOTE_PAUSE_TICKS = 30
