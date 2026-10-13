@@ -23,8 +23,9 @@ import kotlin.math.atan2
  * A figure that visits one player (The Miner, The "Useful" Owner). The rules every visitor follows:
  *
  * - Only the visited player sees it ([broadcastToPlayer]): for anyone else it does not exist.
- * - It cannot be hurt, pushed, carried, leashed, named or targeted, makes no sound of its own and
- *   does not attack.
+ * - It cannot be hurt, pushed, carried, leashed, named or targeted, makes no vanilla sound and
+ *   does not attack. Its own sounds (The Miner's) only reach the visited player, and it gives off
+ *   no vibrations (sculk sensors, wardens).
  * - It is never saved with the world (its type is noSave) and never despawns on its own: everything
  *   it has to remember about the player lives in their Abuse Mode state. If the world closes, it is
  *   simply gone.
@@ -158,6 +159,12 @@ abstract class VisitorEntity(type: EntityType<out VisitorEntity>, level: Level) 
     override fun startRiding(vehicle: Entity, force: Boolean): Boolean = false
 
     override fun canBeLeashed(player: Player): Boolean = false
+
+    // ---- Nobody else can notice it: no vibrations for sculk sensors or wardens, not even its steps
+
+    override fun getMovementEmission(): MovementEmission = MovementEmission.SOUNDS
+
+    override fun dampensVibrations(): Boolean = true
 
     // ---- Never despawns: it goes away by its own rules (serverTick), and nothing saves it
 

@@ -24,6 +24,23 @@ object ModSounds {
     /** Radio static from where the statue of The "Useful" Owner stands (OwnerStatue). 3 s, mono: it is positional. */
     val OWNER_STATIC: SoundEvent = register("owner.static")
 
+    // The Miner (TheMinerEntity): vanilla sounds with his own volume and pitch in sounds.json.
+
+    /** A lantern jingling as he walks (vanilla lantern). */
+    val MINER_LANTERN: SoundEvent = register("miner.lantern")
+
+    /** The metal of his tools as he walks (vanilla chain). */
+    val MINER_TOOLS: SoundEvent = register("miner.tools")
+
+    /** A pickaxe tapping stone while he stands, levels 0-1 (vanilla mining hit on stone, lower). */
+    val MINER_TAP: SoundEvent = register("miner.tap")
+
+    /** Water dripping around him, very low: the mine travels with him (vanilla dripstone). */
+    val MINER_DRIP: SoundEvent = register("miner.drip")
+
+    /** A deal is made: a villager's "hmm", deeper. */
+    val MINER_HMM: SoundEvent = register("miner.hmm")
+
     private fun register(name: String): SoundEvent {
         val id = Dioriteisntuseless.id(name)
         return Registry.register(BuiltInRegistries.SOUND_EVENT, id, SoundEvent.createVariableRangeEvent(id))

@@ -7,15 +7,18 @@ import daio7771.dioriteisntuseless.abuse.visitor.MinerSpeech
 import daio7771.dioriteisntuseless.abuse.visitor.MinerTrades
 import daio7771.dioriteisntuseless.abuse.world.Visibility
 import daio7771.dioriteisntuseless.entity.ai.MinerGoals
+import daio7771.dioriteisntuseless.registry.ModSounds
 import daio7771.dioriteisntuseless.registry.ModItems
 import net.minecraft.core.BlockPos
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
+import net.minecraft.network.protocol.game.ClientboundSoundPacket
 import net.minecraft.network.syncher.EntityDataAccessor
 import net.minecraft.network.syncher.EntityDataSerializers
 import net.minecraft.network.syncher.SynchedEntityData
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.sounds.SoundEvent
-import net.minecraft.sounds.SoundEvents
+import net.minecraft.sounds.SoundSource
 import net.minecraft.util.Mth
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
@@ -31,6 +34,7 @@ import net.minecraft.world.item.trading.MerchantOffer
 import net.minecraft.world.item.trading.MerchantOffers
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.LevelReader
+import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.levelgen.Heightmap
 import net.minecraft.world.level.pathfinder.BlockPathTypes
 import net.minecraft.world.phys.Vec3
@@ -52,6 +56,14 @@ import kotlin.math.sin
  * ground to under a roof or the other way round (houses). If the player holds a dioritine axe or
  * pickaxe, he looks at it rather than at their face ([lookPointOn]). His goals only run with the
  * player close by ([nearPlayer]).
+ *
+ * His sounds (vanilla sounds under his own events in sounds.json, see ModSounds), all positional
+ * and only for the visited player:
+ * - Walking: a lantern jingling and the metal of his tools, on his steps.
+ * - Standing at levels 0-1: a pickaxe tapping stone, slow and never in a steady rhythm.
+ * - Always: water dripping very low around him, as if the mine travelled with him.
+ * - A deal (a trade, or a new job): a deep "hmm".
+ * - Level 4: nothing at all. No cough, no sigh, ever.
  *
  * Right-clicking him: he greets them and pays and gives jobs (MinerSpeech, MinerQuests), then the
  * vanilla trading screen opens; when it is closed, his visit is over (he leaves without being seen
@@ -82,6 +94,11 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
     var omenSpot: Vec3? = null
         private set
     private var omenTicks = 0
+
+    /** Ticks until his next pickaxe tap and his next drip; when his last "hmm" was. */
+    private var tapCountdown = 0
+    private var dripCountdown = 0
+    private var lastHmmAt = Int.MIN_VALUE / 2
 
     override val busy: Boolean get() = tradingPlayer != null || lines.isNotEmpty()
 
@@ -122,6 +139,9 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         arrivedCovered = isCovered(blockPosition())
         restrictTo(blockPosition(), if (arrivedCovered) COVERED_ROAM_RADIUS else ROAM_RADIUS)
         updateMood(player)
+        // He arrives in silence: the first drip and the first tap come a while later.
+        dripCountdown = DRIP_MIN_TICKS + random.nextInt(DRIP_EXTRA_TICKS + 1)
+        tapCountdown = TAP_RESUME_MIN_TICKS + random.nextInt(TAP_RESUME_EXTRA_TICKS + 1)
     }
 
     /**
@@ -150,12 +170,71 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         // Out of reach of his goals, or at level 4: he stays where he is.
         if (mood == MinerSpeech.Mood.FAREWELL || nearPlayer == null) navigation.stop()
         if (omenTicks > 0 && --omenTicks == 0) omenSpot = null
+        tickSounds()
         if (!sayingGoodbye && distanceTo(player) <= GOODBYE_DISTANCE && Visibility.mightSee(player, boundingBox) &&
             mood == MinerSpeech.Mood.FAREWELL
         ) {
             sayGoodbye()
         }
         tickLines(player)
+    }
+
+    // ---- Sounds (only the visited player hears them, and only from near enough)
+
+    /** Taps and drips, on their irregular schedules. At level 4, silence. */
+    private fun tickSounds() {
+        val player = nearPlayer
+        if (player == null || mood == MinerSpeech.Mood.FAREWELL) return
+        if (--dripCountdown <= 0) {
+            dripCountdown = DRIP_MIN_TICKS + random.nextInt(DRIP_EXTRA_TICKS + 1)
+            val spread = DRIP_SPREAD
+            playTo(
+                player, ModSounds.MINER_DRIP,
+                x + (random.nextDouble() * 2 - 1) * spread, y + 1.5 + random.nextDouble() * 1.5, z + (random.nextDouble() * 2 - 1) * spread,
+                pitch = 0.9f + random.nextFloat() * 0.2f,
+            )
+        }
+        // Standing, at levels 0-1, not busy with them: tapping. Walking or talking stops it, and it
+        // starts again only a while after.
+        if (mood != MinerSpeech.Mood.CALM || isTalking || !navigation.isDone) {
+            tapCountdown = TAP_RESUME_MIN_TICKS + random.nextInt(TAP_RESUME_EXTRA_TICKS + 1)
+            return
+        }
+        if (--tapCountdown > 0) return
+        playTo(player, ModSounds.MINER_TAP, x, y + 0.5, z, 0.8f + random.nextFloat() * 0.2f, 0.9f + random.nextFloat() * 0.2f)
+        // Never a steady rhythm: a random wait each time, and now and then a second tap right after.
+        tapCountdown = if (random.nextFloat() < TAP_DOUBLE_CHANCE) {
+            TAP_DOUBLE_MIN_TICKS + random.nextInt(TAP_DOUBLE_EXTRA_TICKS + 1)
+        } else {
+            TAP_MIN_TICKS + random.nextInt(TAP_EXTRA_TICKS + 1)
+        }
+    }
+
+    /** His steps (Entity.move): instead of footsteps, the lantern, and often the metal of his tools. */
+    override fun playStepSound(pos: BlockPos, state: BlockState) {
+        val player = nearPlayer ?: return
+        if (mood == MinerSpeech.Mood.FAREWELL) return
+        playTo(player, ModSounds.MINER_LANTERN, x, y + 1.0, z, pitch = 0.9f + random.nextFloat() * 0.2f)
+        if (random.nextFloat() < TOOLS_CHANCE) {
+            playTo(player, ModSounds.MINER_TOOLS, x, y + 0.9, z, pitch = 0.85f + random.nextFloat() * 0.3f)
+        }
+    }
+
+    /** A deal is made: "hmm". Once, even if several trades happen at once (shift-click). */
+    private fun hmm() {
+        val player = nearPlayer ?: return
+        if (mood == MinerSpeech.Mood.FAREWELL || tickCount - lastHmmAt < HMM_COOLDOWN_TICKS) return
+        lastHmmAt = tickCount
+        playTo(player, ModSounds.MINER_HMM, x, eyeY, z, pitch = 0.95f + random.nextFloat() * 0.1f)
+    }
+
+    /** One of his sounds at ([x], [y], [z]), only for [player]. Volume and pitch multiply those in sounds.json. */
+    private fun playTo(player: ServerPlayer, sound: SoundEvent, x: Double, y: Double, z: Double, volume: Float = 1f, pitch: Float = 1f) {
+        player.connection.send(
+            ClientboundSoundPacket(
+                BuiltInRegistries.SOUND_EVENT.wrapAsHolder(sound), SoundSource.NEUTRAL, x, y, z, volume, pitch, random.nextLong(),
+            )
+        )
     }
 
     private fun updateMood(player: ServerPlayer) {
@@ -206,7 +285,10 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         val state = data.get(player.uuid)
         val mood = MinerSpeech.mood(state.level)
         if (!talked) lines += MinerSpeech.greeting(player, state.miner, mood)
+        val jobBefore = state.miner.questType
         lines += MinerQuests.onTalk(player, state, !talked, mood)
+        // A new job is never of the same kind as the one before: a different kind means a new deal.
+        if (state.miner.questType.isNotEmpty() && state.miner.questType != jobBefore) hmm()
         talked = true
         data.setDirty()
         if (mood == MinerSpeech.Mood.FAREWELL) {
@@ -267,6 +349,7 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
 
     override fun notifyTrade(offer: MerchantOffer) {
         offer.increaseUses()
+        if (!level().isClientSide) AbuseMode.guard("miner trade sound") { hmm() }
     }
 
     override fun notifyTradeUpdated(stack: ItemStack) {}
@@ -277,7 +360,8 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
 
     override fun showProgressBar(): Boolean = false
 
-    override fun getNotifyTradeSound(): SoundEvent = SoundEvents.VILLAGER_YES
+    /** Vanilla never plays this one on the server (MerchantMenu.playTradeSound): his "hmm" comes from [notifyTrade]. */
+    override fun getNotifyTradeSound(): SoundEvent = ModSounds.MINER_HMM
 
     override fun isClientSide(): Boolean = level().isClientSide
 
@@ -326,5 +410,26 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
 
         /** Slow: an old man. */
         const val MOVEMENT_SPEED = 0.25
+
+        /** Drips: every 1-4 s, somewhere up to [DRIP_SPREAD] blocks around him. */
+        private const val DRIP_MIN_TICKS = 20
+        private const val DRIP_EXTRA_TICKS = 60
+        private const val DRIP_SPREAD = 2.5
+
+        /** Taps: 1.5-5 s apart, sometimes ([TAP_DOUBLE_CHANCE]) a second one after a quarter to half a second. */
+        private const val TAP_MIN_TICKS = 30
+        private const val TAP_EXTRA_TICKS = 70
+        private const val TAP_DOUBLE_CHANCE = 0.25f
+        private const val TAP_DOUBLE_MIN_TICKS = 5
+        private const val TAP_DOUBLE_EXTRA_TICKS = 5
+
+        /** After walking or talking, 2-5 s before he taps again. */
+        private const val TAP_RESUME_MIN_TICKS = 40
+        private const val TAP_RESUME_EXTRA_TICKS = 60
+
+        /** How often a step also rattles his tools. */
+        private const val TOOLS_CHANCE = 0.6f
+
+        private const val HMM_COOLDOWN_TICKS = 20
     }
 }

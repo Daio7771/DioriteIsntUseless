@@ -30,5 +30,66 @@
   "owner.static": {
     "subtitle": "subtitles.dioriteisntuseless.owner_static",
     "sounds": ["dioriteisntuseless:owner/static_sequence"]
+  },
+  "miner.lantern": {
+    "subtitle": "subtitles.dioriteisntuseless.miner.lantern",
+    "sounds": [
+      { "name": "minecraft:block/lantern/place1", "volume": 0.35, "pitch": 1.4 },
+      { "name": "minecraft:block/lantern/place2", "volume": 0.35, "pitch": 1.4 },
+      { "name": "minecraft:block/lantern/place3", "volume": 0.35, "pitch": 1.4 },
+      { "name": "minecraft:block/lantern/place4", "volume": 0.35, "pitch": 1.4 },
+      { "name": "minecraft:block/lantern/place5", "volume": 0.35, "pitch": 1.4 },
+      { "name": "minecraft:block/lantern/place6", "volume": 0.35, "pitch": 1.4 }
+    ]
+  },
+  "miner.tools": {
+    "subtitle": "subtitles.dioriteisntuseless.miner.tools",
+    "sounds": [
+      { "name": "minecraft:block/chain/step1", "volume": 0.3, "pitch": 1.2 },
+      { "name": "minecraft:block/chain/step2", "volume": 0.3, "pitch": 1.2 },
+      { "name": "minecraft:block/chain/step3", "volume": 0.3, "pitch": 1.2 },
+      { "name": "minecraft:block/chain/step4", "volume": 0.3, "pitch": 1.2 },
+      { "name": "minecraft:block/chain/step5", "volume": 0.3, "pitch": 1.2 },
+      { "name": "minecraft:block/chain/step6", "volume": 0.3, "pitch": 1.2 }
+    ]
+  },
+  "miner.tap": {
+    "subtitle": "subtitles.dioriteisntuseless.miner.tap",
+    "sounds": [
+      { "name": "minecraft:step/stone1", "volume": 0.3, "pitch": 0.55 },
+      { "name": "minecraft:step/stone2", "volume": 0.3, "pitch": 0.55 },
+      { "name": "minecraft:step/stone3", "volume": 0.3, "pitch": 0.55 },
+      { "name": "minecraft:step/stone4", "volume": 0.3, "pitch": 0.55 },
+      { "name": "minecraft:step/stone5", "volume": 0.3, "pitch": 0.55 },
+      { "name": "minecraft:step/stone6", "volume": 0.3, "pitch": 0.55 }
+    ]
+  },
+  "miner.drip": {
+    "subtitle": "subtitles.dioriteisntuseless.miner.drip",
+    "sounds": [
+      { "name": "minecraft:block/pointed_dripstone/drip_water1", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water2", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water3", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water4", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water5", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water6", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water7", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water8", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water9", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water10", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water11", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water12", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water13", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water14", "volume": 0.15 },
+      { "name": "minecraft:block/pointed_dripstone/drip_water15", "volume": 0.15 }
+    ]
+  },
+  "miner.hmm": {
+    "subtitle": "subtitles.dioriteisntuseless.miner.hmm",
+    "sounds": [
+      { "name": "minecraft:mob/villager/idle1", "volume": 0.8, "pitch": 0.7 },
+      { "name": "minecraft:mob/villager/idle2", "volume": 0.8, "pitch": 0.7 },
+      { "name": "minecraft:mob/villager/idle3", "volume": 0.8, "pitch": 0.7 }
+    ]
   }
 }
