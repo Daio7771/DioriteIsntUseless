@@ -6,6 +6,7 @@ import daio7771.dioriteisntuseless.client.abuse.ClientFreeze
 import daio7771.dioriteisntuseless.client.abuse.CreditsGate
 import daio7771.dioriteisntuseless.client.abuse.NonsenseNames
 import daio7771.dioriteisntuseless.client.entity.MinerBubbles
+import daio7771.dioriteisntuseless.client.entity.MinerTradeNote
 import daio7771.dioriteisntuseless.client.entity.VisitorRenderer
 import net.fabricmc.api.ClientModInitializer
 
@@ -20,5 +21,6 @@ class DioriteisntuselessClient : ClientModInitializer {
         AbuseAmbience.init()
         VisitorRenderer.init()
         MinerBubbles.init()
+        MinerTradeNote.init()
     }
 }

@@ -301,6 +301,7 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         }
         navigation.stop()
         offers = MinerTrades.offersFor(state.level)
+        MinerQuests.sendNote(player, state, mood)
         tradingPlayer = player
         openTradingScreen(player, displayName, 0)
         // If the screen could not open, he is not left waiting for nobody.

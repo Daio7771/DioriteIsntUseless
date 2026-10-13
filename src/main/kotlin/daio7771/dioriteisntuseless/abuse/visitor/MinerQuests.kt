@@ -2,8 +2,10 @@ package daio7771.dioriteisntuseless.abuse.visitor
 
 import daio7771.dioriteisntuseless.Dioriteisntuseless
 import daio7771.dioriteisntuseless.abuse.PlayerAbuse
+import daio7771.dioriteisntuseless.network.MinerNotePacket
 import daio7771.dioriteisntuseless.registry.ModEntities
 import daio7771.dioriteisntuseless.registry.ModItems
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
@@ -21,6 +23,7 @@ import net.minecraft.world.item.Items
  * Jobs are given and paid when talking to him (right-click, before his trades open); he says it in
  * chat, only to that player, in the mood of their abuse level (MinerSpeech). At level 4 he only
  * pays: no more jobs. When one is done away from him, a quiet line above the hotbar says so.
+ * While his trading screen is open, a note at its top shows the job ([sendNote]).
  *
  * Only used from the server thread.
  */
@@ -47,6 +50,7 @@ object MinerQuests {
     )
 
     private const val LANG = "chat.${Dioriteisntuseless.MOD_ID}.miner"
+    private const val NOTE = "note.${Dioriteisntuseless.MOD_ID}.miner"
 
     /**
      * Talking to him (right-click). Pays a finished job (right away) and gives a new one; if the
@@ -85,6 +89,26 @@ object MinerQuests {
                 .withStyle(ChatFormatting.GRAY),
             true,
         )
+    }
+
+    /**
+     * Right before his trading screen opens: the note at its top (MinerNotePacket), with the job
+     * they have from him or, if none, his phrase of the level. Not at level 4 (no trading there),
+     * nor to clients without the mod.
+     */
+    fun sendNote(player: ServerPlayer, state: PlayerAbuse, mood: MinerSpeech.Mood) {
+        if (mood == MinerSpeech.Mood.FAREWELL || !ServerPlayNetworking.canSend(player, MinerNotePacket.TYPE)) return
+        val miner = state.miner
+        val type = Type.byId(miner.questType)
+        val note = if (type == null) {
+            MinerNotePacket(Component.empty(), Component.translatable("$NOTE.wants${mood.suffix}"), 0, 0, false, Component.empty())
+        } else {
+            MinerNotePacket(
+                Component.translatable("$NOTE.job${mood.suffix}"), description(miner), miner.questAmount,
+                progress(player, state, type).toInt(), type == Type.BRING_CRYSTALS, reward(miner),
+            )
+        }
+        ServerPlayNetworking.send(player, note)
     }
 
     /** A new random job, never the same kind twice in a row. Also used by the testing command. */
