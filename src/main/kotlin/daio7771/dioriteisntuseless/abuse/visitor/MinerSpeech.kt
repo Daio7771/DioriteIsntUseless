@@ -2,13 +2,18 @@ package daio7771.dioriteisntuseless.abuse.visitor
 
 import daio7771.dioriteisntuseless.Dioriteisntuseless
 import daio7771.dioriteisntuseless.abuse.AbuseTracker
+import daio7771.dioriteisntuseless.network.MinerLinePacket
 import daio7771.dioriteisntuseless.registry.ModEntities
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
+import kotlin.math.ceil
 
 /**
- * What The Miner says (lang: chat.dioriteisntuseless.miner.*), always in chat and only to the
- * player he visits. His mood follows their abuse level:
+ * What The Miner says (lang: chat.dioriteisntuseless.miner.*), only to the player he visits: in a
+ * bubble above his head, typed letter by letter with his voice, and then copied to their chat
+ * ("The Miner: ..."), all of it on their client (MinerLinePacket, MinerBubbles). A line ending in
+ * "—" is cut off: text and voice stop dead there. His mood follows their abuse level:
  *
  * - [Mood.CALM] (levels 0-1): friendly, he wants more crystals.
  * - [Mood.EAGER] (levels 2-3): far too enthusiastic, odd. Sometimes he starts warning them and cuts
@@ -64,8 +69,40 @@ object MinerSpeech {
         return Component.translatable("$LANG.$kind.$index")
     }
 
-    /** A line of his in chat, only for [player]: "<The Miner> ...". */
-    fun say(player: ServerPlayer, line: Component) {
-        player.sendSystemMessage(Component.translatable("chat.type.text", ModEntities.THE_MINER.description, line))
+    /**
+     * How fast his lines are typed, in letters per tick: 30 a second at levels 0-1; slower at
+     * level 4. At levels 2-3 it is irregular, with hesitations (MinerBubbles):
+     * [EAGER_CHARS_PER_TICK] is about its average.
+     */
+    const val CALM_CHARS_PER_TICK = 1.5f
+    const val EAGER_CHARS_PER_TICK = 0.55f
+    const val FAREWELL_CHARS_PER_TICK = 1.0f
+
+    fun charsPerTick(mood: Mood): Float = when (mood) {
+        Mood.CALM -> CALM_CHARS_PER_TICK
+        Mood.EAGER -> EAGER_CHARS_PER_TICK
+        Mood.FAREWELL -> FAREWELL_CHARS_PER_TICK
     }
+
+    /** After a line is typed, this long to read it before the next one. */
+    private const val READ_TICKS = 40
+
+    /**
+     * [line], said by The Miner ([minerId]) in [mood], only for [player]: in his bubble or, if
+     * their client does not have the mod, in their chat. Returns how many ticks to wait before his
+     * next line (typing it and a moment to read it; the client also waits for a line to be typed
+     * before starting the next one).
+     */
+    fun say(player: ServerPlayer, minerId: Int, line: Component, mood: Mood): Int {
+        if (ServerPlayNetworking.canSend(player, MinerLinePacket.TYPE)) {
+            ServerPlayNetworking.send(player, MinerLinePacket(minerId, line, mood))
+        } else {
+            player.sendSystemMessage(chatLine(line))
+        }
+        // On a dedicated server this is the English text (Fabric loads the mod's en_us there): close enough.
+        return ceil(line.string.length / charsPerTick(mood)).toInt() + READ_TICKS
+    }
+
+    /** A line of his as it goes to the chat: "The Miner: ...". */
+    fun chatLine(line: Component): Component = Component.translatable("$LANG.says", ModEntities.THE_MINER.description, line)
 }

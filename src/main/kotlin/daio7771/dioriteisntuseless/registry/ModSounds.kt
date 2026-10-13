@@ -41,6 +41,9 @@ object ModSounds {
     /** A deal is made: a villager's "hmm", deeper. */
     val MINER_HMM: SoundEvent = register("miner.hmm")
 
+    /** His voice while his words are typed in his bubble: a low note block bass, every 2 letters (MinerBubbles). */
+    val MINER_VOICE: SoundEvent = register("miner.voice")
+
     private fun register(name: String): SoundEvent {
         val id = Dioriteisntuseless.id(name)
         return Registry.register(BuiltInRegistries.SOUND_EVENT, id, SoundEvent.createVariableRangeEvent(id))

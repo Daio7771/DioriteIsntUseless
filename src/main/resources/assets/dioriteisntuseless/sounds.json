@@ -91,5 +91,9 @@
       { "name": "minecraft:mob/villager/idle2", "volume": 0.8, "pitch": 0.7 },
       { "name": "minecraft:mob/villager/idle3", "volume": 0.8, "pitch": 0.7 }
     ]
+  },
+  "miner.voice": {
+    "subtitle": "subtitles.dioriteisntuseless.miner.voice",
+    "sounds": [{ "name": "minecraft:note/bassattack", "volume": 0.35, "pitch": 0.7 }]
   }
 }

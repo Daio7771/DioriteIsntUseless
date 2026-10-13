@@ -3,6 +3,7 @@ package daio7771.dioriteisntuseless.client.entity
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.math.Axis
 import daio7771.dioriteisntuseless.Dioriteisntuseless
+import daio7771.dioriteisntuseless.entity.TheMinerEntity
 import daio7771.dioriteisntuseless.entity.UsefulOwnerEntity
 import daio7771.dioriteisntuseless.entity.VisitorEntity
 import daio7771.dioriteisntuseless.registry.ModEntities
@@ -10,6 +11,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry
 import net.minecraft.client.model.PlayerModel
 import net.minecraft.client.model.geom.ModelLayers
 import net.minecraft.client.model.geom.ModelPart
+import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.renderer.entity.EntityRendererProvider
 import net.minecraft.client.renderer.entity.LivingEntityRenderer
 import net.minecraft.resources.ResourceLocation
@@ -57,6 +59,11 @@ class VisitorRenderer<T : VisitorEntity>(
     }
 
     override fun shouldShowName(entity: T): Boolean = false
+
+    override fun render(entity: T, yaw: Float, partialTick: Float, poseStack: PoseStack, buffers: MultiBufferSource, light: Int) {
+        super.render(entity, yaw, partialTick, poseStack, buffers, light)
+        if (entity is TheMinerEntity) MinerBubbles.render(entity, poseStack, buffers, partialTick, entityRenderDispatcher, font)
+    }
 
     /** The player model; limping, with a stiff right leg; or still, with only the head moving. */
     private class VisitorModel<T : LivingEntity>(

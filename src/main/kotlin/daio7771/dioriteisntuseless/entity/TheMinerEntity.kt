@@ -37,6 +37,7 @@ import net.minecraft.world.level.LevelReader
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.levelgen.Heightmap
 import net.minecraft.world.level.pathfinder.BlockPathTypes
+import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import kotlin.math.cos
 import kotlin.math.sin
@@ -161,6 +162,9 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
     /** He limps: every step, a moment dragging the bad leg (the client also draws it, VisitorRenderer). */
     override fun getSpeed(): Float =
         if (tickCount % LIMP_CYCLE_TICKS < LIMP_DRAG_TICKS) super.getSpeed() * LIMP_DRAG_SPEED else super.getSpeed()
+
+    /** Taller for culling only: his speech bubble (MinerBubbles) is drawn even with his body off the screen. */
+    override fun getBoundingBoxForCulling(): AABB = super.getBoundingBoxForCulling().expandTowards(0.0, BUBBLE_ROOM, 0.0)
 
     /** At level 4 he stands still: his body does not turn after his head (unless the head cannot turn any further). */
     override fun createBodyControl(): BodyRotationControl = MinerBodyControl(this)
@@ -309,12 +313,11 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         lines += MinerSpeech.farewell()
     }
 
-    /** One line every [LINE_GAP_TICKS]; the first one right away. */
+    /** One line at a time, each when the one before has been typed and read; the first one right away. */
     private fun tickLines(player: ServerPlayer) {
         if (lines.isEmpty()) return
         if (--lineCountdown > 0) return
-        MinerSpeech.say(player, lines.removeFirst())
-        lineCountdown = LINE_GAP_TICKS
+        lineCountdown = MinerSpeech.say(player, id, lines.removeFirst(), mood)
         if (lines.isEmpty() && sayingGoodbye) {
             // Only now: if he went away halfway, he comes back to say it all.
             val data = AbuseData.get(player.server)
@@ -384,8 +387,6 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         private val DATA_MOOD: EntityDataAccessor<Byte> =
             SynchedEntityData.defineId(TheMinerEntity::class.java, EntityDataSerializers.BYTE)
 
-        private const val LINE_GAP_TICKS = 40
-
         /** At level 4 he starts his goodbye when they see him this close. */
         private const val GOODBYE_DISTANCE = 8f
 
@@ -407,6 +408,9 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         private const val HAND_SIDE = 0.35
         private const val HAND_FORWARD = 0.2
         private const val HAND_HEIGHT = 0.55
+
+        /** Room above his head for his speech bubble, in blocks. */
+        private const val BUBBLE_ROOM = 2.0
 
         /** Slow: an old man. */
         const val MOVEMENT_SPEED = 0.25
