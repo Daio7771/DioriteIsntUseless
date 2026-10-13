@@ -24,6 +24,9 @@ import kotlin.math.max
  * [limping] (The Miner): his right leg barely bends, and on every stride, as his weight falls on
  * it, he sinks a little and leans to that side. Only while he walks, and smoothly: it follows the
  * walk animation, never jumps.
+ *
+ * [still] (The "Useful" Owner): arms and legs straight and motionless, not even the idle sway of
+ * the arms that every player model has. Only its head moves.
  */
 class VisitorRenderer<T : VisitorEntity>(
     context: EntityRendererProvider.Context,
@@ -31,8 +34,9 @@ class VisitorRenderer<T : VisitorEntity>(
     private val widthScale: Float = 1f,
     private val heightScale: Float = 1f,
     private val limping: Boolean = false,
+    still: Boolean = false,
 ) : LivingEntityRenderer<T, PlayerModel<T>>(
-    context, VisitorModel(context.bakeLayer(ModelLayers.PLAYER), limping), SHADOW_RADIUS * widthScale,
+    context, VisitorModel(context.bakeLayer(ModelLayers.PLAYER), limping, still), SHADOW_RADIUS * widthScale,
 ) {
 
     override fun getTextureLocation(entity: T): ResourceLocation = texture
@@ -54,13 +58,29 @@ class VisitorRenderer<T : VisitorEntity>(
 
     override fun shouldShowName(entity: T): Boolean = false
 
-    /** The player model; limping, with a stiff right leg. */
-    private class VisitorModel<T : LivingEntity>(root: ModelPart, private val limping: Boolean) : PlayerModel<T>(root, false) {
+    /** The player model; limping, with a stiff right leg; or still, with only the head moving. */
+    private class VisitorModel<T : LivingEntity>(
+        root: ModelPart, private val limping: Boolean, private val still: Boolean,
+    ) : PlayerModel<T>(root, false) {
         override fun setupAnim(entity: T, limbSwing: Float, limbSwingAmount: Float, ageInTicks: Float, netHeadYaw: Float, headPitch: Float) {
             super.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch)
-            if (!limping) return
-            rightLeg.xRot *= STIFF_LEG
-            rightPants.copyFrom(rightLeg)
+            if (limping) {
+                rightLeg.xRot *= STIFF_LEG
+                rightPants.copyFrom(rightLeg)
+            }
+            if (still) {
+                for (arm in listOf(rightArm, leftArm)) {
+                    arm.xRot = 0f
+                    arm.yRot = 0f
+                    arm.zRot = 0f
+                }
+                rightLeg.xRot = 0f
+                leftLeg.xRot = 0f
+                rightSleeve.copyFrom(rightArm)
+                leftSleeve.copyFrom(leftArm)
+                rightPants.copyFrom(rightLeg)
+                leftPants.copyFrom(leftLeg)
+            }
         }
     }
 
@@ -86,7 +106,7 @@ class VisitorRenderer<T : VisitorEntity>(
             EntityRendererRegistry.register(ModEntities.USEFUL_OWNER) {
                 VisitorRenderer(
                     it, Dioriteisntuseless.id("textures/entity/useful_owner.png"),
-                    UsefulOwnerEntity.WIDTH_SCALE, UsefulOwnerEntity.HEIGHT_SCALE,
+                    UsefulOwnerEntity.WIDTH_SCALE, UsefulOwnerEntity.HEIGHT_SCALE, still = true,
                 )
             }
         }
