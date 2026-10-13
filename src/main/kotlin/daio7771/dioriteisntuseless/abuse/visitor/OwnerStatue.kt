@@ -30,10 +30,11 @@ import java.util.UUID
  * has worn out [TOOLS_NEEDED] Dioritine Axes or [TOOLS_NEEDED] Dioritine Pickaxes, whichever comes
  * first (OwnerState). Axes and pickaxes do not add up: it takes 3 of the same kind.
  *
- * - A while later, at a calm moment, it appears silently 4-6 blocks behind them, out of sight,
- *   on solid ground and never inside a building (Visitors.Kind.OWNER). It stands still.
+ * - Right when that tool breaks, it appears silently 4-6 blocks behind them, out of sight, on
+ *   solid ground and never inside a building (Visitors.Kind.OWNER). It stands still. No waiting
+ *   and no conditions: only if there is no such spot right then, it tries again every second.
  * - If The Miner is visiting and close to that spot, he knows: [OMEN_TICKS] before it appears, he
- *   turns his head towards the spot (TheMinerEntity.foresee). It never comes while he is talking.
+ *   turns his head towards the spot (TheMinerEntity.foresee).
  * - Radio static plays from where it stands ([playStatic]): [STATIC_DELAY_TICKS] after it appears,
  *   then again every [STATIC_GAP_TICKS] while they have not seen it, [STATIC_PLAYS] times at most.
  *   It is a warning, not a scare: it plays with abuseMode.jumpscares off too.
@@ -69,7 +70,7 @@ object OwnerStatue {
     /** The static comes from about its head. */
     private const val STATIC_HEIGHT = 1.6
 
-    /** It does not come right as the last tool breaks, nor right after a failed try: 30 s to 2 min later. */
+    /** After leaving unseen (its static unanswered), it comes back 30 s to 2 min later. */
     private const val MIN_DELAY_TICKS = 30 * 20L
     private const val MAX_DELAY_TICKS = 2 * 60 * 20L
 
@@ -85,7 +86,7 @@ object OwnerStatue {
     /** Where to look at it: about its eyes (it is 1.1 times as tall as a player). */
     private const val EYE_HEIGHT = 1.75
 
-    /** PlayerAbuse.playTicks before which it does not try again. Not saved: a reload starts a new wait. */
+    /** After leaving unseen: PlayerAbuse.playTicks before which it does not come back. Not saved: after a reload, it comes at once. */
     private val nextTryAt = HashMap<UUID, Long>()
 
     /** It is about to appear at [spot] (The Miner is already looking there) at PlayerAbuse.playTicks [dueAt]. */
@@ -116,6 +117,8 @@ object OwnerStatue {
             val owner = data.get(player.uuid).owner
             if (axe) owner.axesWornOut++ else owner.pickaxesWornOut++
             data.setDirty()
+            // The third one: it comes now.
+            tryToCome(player, data.get(player.uuid))
         }
     }
 
@@ -125,29 +128,29 @@ object OwnerStatue {
         if (omen != null) {
             if (state.playTicks < omen.dueAt) return
             omens.remove(player.uuid)
-            // If they turned towards the spot meanwhile (or trouble came), it does not come: he looked at nothing.
-            if (Visitors.isCalm(player) && VisitorSpots.stillHidden(player, Visitors.Kind.OWNER.type(), omen.spot)) {
+            // If they turned towards the spot meanwhile, it does not come there: he looked at nothing,
+            // and it looks for another spot on the next check.
+            if (player.isAlive && VisitorSpots.stillHidden(player, Visitors.Kind.OWNER.type(), omen.spot)) {
                 bring(player, omen.spot)
             }
             return
         }
+        tryToCome(player, state)
+    }
+
+    /**
+     * When the tools are worn out and it has not been shown yet: it comes now. If there is no spot
+     * for it right now, the next check (a second later) tries again.
+     */
+    private fun tryToCome(player: ServerPlayer, state: PlayerAbuse) {
         val owner = state.owner
         if (owner.statueShown || !toolsWornOut(owner)) return
         if (state.level >= AbuseTracker.LEVEL_FINAL) return  // the ending has its own appearance
-        val waitUntil = nextTryAt[player.uuid]
-        if (waitUntil == null) {
-            scheduleTry(player, state)
-            return
-        }
-        if (state.playTicks < waitUntil || Visitors.current(player.uuid, Visitors.Kind.OWNER) != null) return
-        if (minerTalking(player) || !Visitors.isCalm(player)) return
-        scheduleTry(player, state)
+        nextTryAt[player.uuid]?.let { if (state.playTicks < it) return }
+        if (!player.isAlive || player.isSpectator || player.uuid in omens) return
+        if (Visitors.current(player.uuid, Visitors.Kind.OWNER) != null) return
         approach(player, state)
     }
-
-    /** The Miner is trading or talking with them: it does not interrupt. */
-    private fun minerTalking(player: ServerPlayer): Boolean =
-        (Visitors.current(player.uuid, Visitors.Kind.MINER) as? TheMinerEntity)?.isTalking == true
 
     /**
      * Picks its spot and brings it there: right away or, if The Miner is close to the spot, after
@@ -193,7 +196,7 @@ object OwnerStatue {
         player.connection.send(ClientboundStopSoundPacket(ModSounds.OWNER_STATIC.location, SoundSource.HOSTILE))
     }
 
-    /** From UsefulOwnerEntity: unseen after all its static, it is leaving. It comes back later, as after any failed try. */
+    /** From UsefulOwnerEntity: unseen after all its static, it is leaving. It comes back 30 s to 2 min later. */
     fun gaveUp(player: ServerPlayer) {
         scheduleTry(player, AbuseData.get(player.server).get(player.uuid))
     }
