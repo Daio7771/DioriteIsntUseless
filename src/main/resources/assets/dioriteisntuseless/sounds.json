@@ -26,5 +26,9 @@
   "ambience.final": {
     "subtitle": "subtitles.dioriteisntuseless.ambience",
     "sounds": [{ "name": "dioriteisntuseless:ambience/final", "stream": true }]
+  },
+  "owner.static": {
+    "subtitle": "subtitles.dioriteisntuseless.owner_static",
+    "sounds": ["dioriteisntuseless:owner/static_sequence"]
   }
 }

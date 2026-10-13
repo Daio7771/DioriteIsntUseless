@@ -8,11 +8,13 @@ import daio7771.dioriteisntuseless.config.ModConfig
 import daio7771.dioriteisntuseless.entity.TheMinerEntity
 import daio7771.dioriteisntuseless.entity.UsefulOwnerEntity
 import daio7771.dioriteisntuseless.registry.ModItems
+import daio7771.dioriteisntuseless.registry.ModSounds
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.minecraft.core.particles.BlockParticleOption
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.protocol.game.ClientboundSoundPacket
+import net.minecraft.network.protocol.game.ClientboundStopSoundPacket
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundEvents
@@ -32,10 +34,15 @@ import java.util.UUID
  *   on solid ground and never inside a building (Visitors.Kind.OWNER). It stands still.
  * - If The Miner is visiting and close to that spot, he knows: [OMEN_TICKS] before it appears, he
  *   turns his head towards the spot (TheMinerEntity.foresee). It never comes while he is talking.
- * - [SEEN_TICKS] (3 s) after they first SEE it (Visibility.sees), a loud, dry crack of stone and
- *   it is gone, leaving diorite dust. No flashes. With abuseMode.jumpscares off, the crack is soft.
- * - Only then does it count as shown. If it goes away before (they disconnect, go too far, change
- *   world...), it is never saved: it is tried again later.
+ * - Radio static plays from where it stands ([playStatic]): [STATIC_DELAY_TICKS] after it appears,
+ *   then again every [STATIC_GAP_TICKS] while they have not seen it, [STATIC_PLAYS] times at most.
+ *   It is a warning, not a scare: it plays with abuseMode.jumpscares off too.
+ * - If they see it (Visibility.sees) while the static plays, the static is cut dead ([cutStatic]).
+ * - [SEEN_TICKS] (3 s) after they first SEE it, a loud, dry crack of stone and it is gone, leaving
+ *   diorite dust. No flashes. With abuseMode.jumpscares off, the crack is soft.
+ * - Only then does it count as shown. If they never see it, it leaves unseen after the last static
+ *   ([gaveUp]) and tries again later; the same if it goes away before (they disconnect, go too far,
+ *   change world...). It is never saved.
  *
  * Sound and dust only reach that player. Only used from the server thread.
  */
@@ -45,6 +52,22 @@ object OwnerStatue {
 
     /** 3 seconds from the moment they see it. */
     const val SEEN_TICKS = 3 * 20
+
+    /** The static: first this long after it appears, then every [STATIC_GAP_TICKS] (3 s of static, 3 of silence). */
+    const val STATIC_DELAY_TICKS = 20
+    const val STATIC_GAP_TICKS = 6 * 20
+    const val STATIC_PLAYS = 3
+
+    /** How long one play of owner/static_sequence.ogg lasts. */
+    const val STATIC_LENGTH_TICKS = 3 * 20
+
+    /** Unseen this long after appearing (the last static and its silence), it leaves. */
+    const val GIVE_UP_TICKS = STATIC_DELAY_TICKS + STATIC_PLAYS * STATIC_GAP_TICKS
+
+    private const val STATIC_VOLUME = 1.0f
+
+    /** The static comes from about its head. */
+    private const val STATIC_HEIGHT = 1.6
 
     /** It does not come right as the last tool breaks, nor right after a failed try: 30 s to 2 min later. */
     private const val MIN_DELAY_TICKS = 30 * 20L
@@ -153,6 +176,26 @@ object OwnerStatue {
         val statue = Visitors.bring(player, Visitors.Kind.OWNER, -1, spot) as? UsefulOwnerEntity ?: return false
         statue.becomeStatue()
         return true
+    }
+
+    /** From UsefulOwnerEntity: one play of the radio static, from where [statue] stands, only for [player]. */
+    fun playStatic(player: ServerPlayer, statue: UsefulOwnerEntity) {
+        player.connection.send(
+            ClientboundSoundPacket(
+                BuiltInRegistries.SOUND_EVENT.wrapAsHolder(ModSounds.OWNER_STATIC), SoundSource.HOSTILE,
+                statue.x, statue.y + STATIC_HEIGHT, statue.z, STATIC_VOLUME, 1f, player.random.nextLong(),
+            )
+        )
+    }
+
+    /** Cuts the static dead for [player] (they have seen it, or it is gone). */
+    fun cutStatic(player: ServerPlayer) {
+        player.connection.send(ClientboundStopSoundPacket(ModSounds.OWNER_STATIC.location, SoundSource.HOSTILE))
+    }
+
+    /** From UsefulOwnerEntity: unseen after all its static, it is leaving. It comes back later, as after any failed try. */
+    fun gaveUp(player: ServerPlayer) {
+        scheduleTry(player, AbuseData.get(player.server).get(player.uuid))
     }
 
     /** From UsefulOwnerEntity, [SEEN_TICKS] after they saw it: the crack, the dust, and it is gone for this cycle. */
