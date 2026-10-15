@@ -67,9 +67,9 @@ import kotlin.math.sin
  * Right-clicking him: he talks (MinerSpeech): the first time in a visit he greets them; every time
  * he pays a finished favor and asks a new one, or reminds them of the current one and how far
  * along it is (MinerQuests). There is no trading screen. His lines come one at a time, and he does
- * not leave while he still has something to say. At the key moments he also hands over a note
- * (MinerNotes), in its place among his lines. On his first visit, when they come near, he tosses
- * them his instructions book and the paper of his first favor. Every job comes on a paper
+ * not leave while he still has something to say. At the key moments he also tells them something
+ * he only tells once (MinerNotes), in its place among his lines. On his first visit, when they come
+ * near, he tosses them his instructions book (the only book he gives) and the paper of his first favor. Every job comes on a paper
  * (MinerJobPaperItem): he takes theirs back when he arrives and, after talking, hands them the
  * current one (MinerQuests).
  *
@@ -371,17 +371,15 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         val mood = MinerSpeech.mood(state.level)
         if (!talked) {
             val greeting = MinerSpeech.greeting(player, state.miner, mood, !MinerNotes.given(state.miner, MinerNotes.Note.WARNING))
-            for ((index, line) in greeting.lines.withIndex()) {
-                speech += Said.Line(line)
-                // What he could not say out loud, he writes down: the note comes right after the cut.
-                if (index == 0 && greeting.cutOff) handOver(state.miner, MinerNotes.Note.WARNING)
-            }
+            greeting.lines.forEach { speech += Said.Line(it) }
+            // What he could not say out loud, he says under his breath once he has pulled himself together.
+            if (greeting.cutOff) handOver(state.miner, MinerNotes.Note.WARNING)
         }
         val jobBefore = state.miner.questType
         MinerQuests.onTalk(player, state, mood).forEach { speech += Said.Line(it) }
         // A new job is never of the same kind as the one before: a different kind means a new deal.
         if (state.miner.questType.isNotEmpty() && state.miner.questType != jobBefore) hmm()
-        // He paid one: the first time, he also tells them where the old mine is (MinerNotes).
+        // He paid one: the first time, he also tells them where the old mine is (MinerNotes), and it stays on their paper.
         if (jobBefore.isNotEmpty() && state.miner.questType != jobBefore && mood != MinerSpeech.Mood.FAREWELL) {
             handOver(state.miner, MinerNotes.Note.MINE)
         }
@@ -404,7 +402,7 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         handOver(AbuseData.get(player.server).get(player.uuid).miner, MinerNotes.Note.FAREWELL)
     }
 
-    /** Queues [note] after what he is saying, unless they already have it from him (or it is already queued). */
+    /** Queues [note] after what he is saying, unless he already told them (or it is already queued). */
     private fun handOver(miner: MinerState, note: MinerNotes.Note) {
         if (MinerNotes.given(miner, note) || speech.any { it is Said.Note && it.note == note }) return
         speech += Said.Note(note)
@@ -420,10 +418,11 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         when (val next = speech.removeFirst()) {
             is Said.Line -> lineCountdown = MinerSpeech.say(player, id, next.text, mood)
             is Said.Note -> {
+                // Its lines go first, in order; nothing if it was already told (or there is no mine near).
                 val data = AbuseData.get(player.server)
-                MinerNotes.give(player, this, data.get(player.uuid).miner, next.note)
+                MinerNotes.lines(player, data.get(player.uuid).miner, next.note)?.asReversed()?.forEach { speech.addFirst(Said.Line(it)) }
                 data.setDirty()
-                lineCountdown = NOTE_PAUSE_TICKS
+                lineCountdown = 1
             }
             Said.Paper -> {
                 val data = AbuseData.get(player.server)
@@ -473,7 +472,7 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         private const val THROW_DISTANCE = 6.0
         private const val INSTRUCTIONS_CHECK_TICKS = 10
 
-        /** After handing over a note, this long before his next line. */
+        /** After handing over their paper, this long before his next line. */
         private const val NOTE_PAUSE_TICKS = 30
 
         /** At level 4 he starts his goodbye when they see him this close. */

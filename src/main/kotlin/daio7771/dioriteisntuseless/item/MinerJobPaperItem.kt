@@ -24,7 +24,8 @@ import net.minecraft.world.level.Level
  *
  * Right-clicking it reads it ([use]): the job, how far along it is (counted on the server, like his
  * jobs), what it pays and his rule: once it is done, sleep in a bed under the open sky and he
- * comes in the morning (MinerVisits).
+ * comes in the morning (MinerVisits). Once he has told them where the old mine is (MinerNotes),
+ * that too, on every paper.
  *
  * Its tag keeps what the tooltip shows, as it was when he wrote it: [TAG_JOB] (MinerQuests.Type id),
  * [TAG_AMOUNT], [TAG_IRON] and [TAG_REWARD].
@@ -64,6 +65,11 @@ class MinerJobPaperItem(properties: Properties) : Item(properties) {
         val current = miner.questType == type.id && miner.questAmount == amount &&
             miner.questRewardIron == tag.getBoolean(TAG_IRON) && miner.questRewardCount == tag.getInt(TAG_REWARD)
         player.sendSystemMessage(Component.translatable("$LANG.read.title").withStyle(ChatFormatting.GOLD))
+        if (miner.mineKnown) {
+            player.sendSystemMessage(
+                Component.translatable("$LANG.read.mine", miner.mineX, miner.mineZ, miner.mineY).withStyle(ChatFormatting.GRAY)
+            )
+        }
         if (!current) {
             player.sendSystemMessage(MinerQuests.description(type, amount).withStyle(ChatFormatting.GRAY))
             player.sendSystemMessage(Component.translatable("$LANG.read.old").withStyle(ChatFormatting.GRAY))

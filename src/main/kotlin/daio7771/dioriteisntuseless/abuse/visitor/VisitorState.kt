@@ -28,7 +28,7 @@ class MinerState {
     /** The last kind of job, so the next one is a different kind. */
     var lastQuestType = ""
 
-    /** The notes he has handed over in this cycle (MinerNotes.Note.bit). */
+    /** The notes he has handed over or told in this cycle (MinerNotes.Note.bit). */
     var notesGiven = 0
 
     /** How many trees, strikes or crystals the job asks for. */
@@ -42,6 +42,19 @@ class MinerState {
      * one. He hands it back after talking (TheMinerEntity) or, if he left before, MinerQuests.returnPaper.
      */
     var paperHeld = false
+
+    /** The old mine he told them about (MinerNotes.Note.MINE): its way in and the height of its corridors. */
+    var mineKnown = false
+    var mineX = 0
+    var mineY = 0
+    var mineZ = 0
+
+    fun rememberMine(x: Int, y: Int, z: Int) {
+        mineKnown = true
+        mineX = x
+        mineY = y
+        mineZ = z
+    }
 
     /** It pays [questRewardCount] iron ingots (true) or emeralds (false). */
     var questRewardIron = false
@@ -70,6 +83,7 @@ class MinerState {
         lastQuestType = ""
         lastLine = ""
         notesGiven = 0
+        mineKnown = false
     }
 
     fun save(): CompoundTag = CompoundTag().apply {
@@ -85,6 +99,11 @@ class MinerState {
         putInt("QuestRewardCount", questRewardCount)
         putInt("NotesGiven", notesGiven)
         putBoolean("PaperHeld", paperHeld)
+        if (mineKnown) put("Mine", CompoundTag().apply {
+            putInt("X", mineX)
+            putInt("Y", mineY)
+            putInt("Z", mineZ)
+        })
     }
 
     fun load(tag: CompoundTag) {
@@ -105,6 +124,14 @@ class MinerState {
         questRewardCount = tag.getInt("QuestRewardCount").coerceIn(0, MAX_REWARD)
         notesGiven = tag.getInt("NotesGiven")
         paperHeld = tag.getBoolean("PaperHeld")
+        mineKnown = tag.contains("Mine")
+        tag.getCompound("Mine").let {
+            mineX = it.getInt("X")
+            mineY = it.getInt("Y")
+            mineZ = it.getInt("Z")
+        }
+        // Told before it was remembered (0.3 betas, as a book): he tells them again, and this time it stays on the paper.
+        if (!mineKnown) notesGiven = notesGiven and MinerNotes.Note.MINE.bit.inv()
         // A job that makes no sense (an unknown kind, edited data) is dropped: he gives a new one.
         if (MinerQuests.Type.byId(questType) == null || questAmount <= 0) clearQuest()
     }
