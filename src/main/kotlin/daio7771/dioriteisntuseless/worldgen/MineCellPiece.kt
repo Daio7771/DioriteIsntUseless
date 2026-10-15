@@ -4,8 +4,10 @@ import daio7771.dioriteisntuseless.registry.ModStructures
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.NbtOps
 import net.minecraft.util.RandomSource
 import net.minecraft.world.entity.EntityType
+import net.minecraft.world.item.DyeColor
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.ChunkPos
@@ -14,6 +16,9 @@ import net.minecraft.world.level.WorldGenLevel
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.RailBlock
 import net.minecraft.world.level.block.SlabBlock
+import net.minecraft.world.level.block.WallSignBlock
+import net.minecraft.world.level.block.entity.SignBlockEntity
+import net.minecraft.world.level.block.entity.SignText
 import net.minecraft.world.level.block.state.properties.RailShape
 import net.minecraft.world.level.block.state.properties.SlabType
 import net.minecraft.world.level.chunk.ChunkGenerator
@@ -28,8 +33,8 @@ import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSeriali
  * a fork (four, a crossing).
  *
  * What may be in it: a wooden [beam] across a straight stretch, broken [rails] along it (with
- * gaps), a [crumb] at the closed end of a dead end, a small [spawner] in the middle. The [entrance]
- * is a straight stretch whose outer end has caved in.
+ * gaps), a [crumb] at the closed end of a dead end, a small [spawner] in the middle, a sign with
+ * a [note] on one of its walls. The [entrance] is a straight stretch whose outer end has caved in.
  */
 class MineCellPiece : StructurePiece {
 
@@ -45,9 +50,11 @@ class MineCellPiece : StructurePiece {
     private val rails: Boolean
     private val crumb: Crumb
     private val spawner: Spawner
+    private val note: MineNote?
 
     constructor(
         corner: BlockPos, openings: Set<Direction>, entrance: Boolean, beam: Boolean, rails: Boolean, crumb: Crumb, spawner: Spawner,
+        note: MineNote?,
     ) : super(ModStructures.MINE_CELL, 0, box(corner)) {
         this.openings = openings
         this.entrance = entrance
@@ -55,6 +62,7 @@ class MineCellPiece : StructurePiece {
         this.rails = rails
         this.crumb = crumb
         this.spawner = spawner
+        this.note = note
     }
 
     constructor(tag: CompoundTag) : super(ModStructures.MINE_CELL, tag) {
@@ -64,6 +72,7 @@ class MineCellPiece : StructurePiece {
         rails = tag.getBoolean(TAG_RAILS)
         crumb = Crumb.entries.getOrElse(tag.getInt(TAG_CRUMB)) { Crumb.NONE }
         spawner = Spawner.entries.getOrElse(tag.getInt(TAG_SPAWNER)) { Spawner.NONE }
+        note = MineNote.byId(tag.getString(TAG_NOTE))
     }
 
     override fun addAdditionalSaveData(context: StructurePieceSerializationContext, tag: CompoundTag) {
@@ -73,6 +82,7 @@ class MineCellPiece : StructurePiece {
         tag.putBoolean(TAG_RAILS, rails)
         tag.putInt(TAG_CRUMB, crumb.ordinal)
         tag.putInt(TAG_SPAWNER, spawner.ordinal)
+        note?.let { tag.putString(TAG_NOTE, it.id) }
     }
 
     override fun postProcess(
@@ -105,6 +115,33 @@ class MineCellPiece : StructurePiece {
         }
         spawner.type()?.let { MineBlocks.spawner(level, box, BlockPos(x0 + MID, y0 + 1, z0 + MID), it) }
         if (crumb != Crumb.NONE) crumb(level, box)
+        note?.let { sign(level, box, it, axis) }
+    }
+
+    /**
+     * [note] on a wall sign at eye height: on the closed end of a dead end or of the entrance, or
+     * on a side wall (next to the beam, not on it). Waxed: nobody rewrites it.
+     */
+    private fun sign(level: WorldGenLevel, box: BoundingBox, note: MineNote, axis: Direction.Axis) {
+        val closed = Direction.Plane.HORIZONTAL.filter { it !in openings }
+        val wall = when {
+            openings.size == 1 -> openings.first().opposite
+            else -> closed.firstOrNull() ?: return
+        }
+        val b = boundingBox
+        var pos = BlockPos(b.minX() + MID, b.minY() + 2, b.minZ() + MID).relative(wall)
+        // Beside the beam's post, never in it.
+        if (beam && wall.axis != axis) pos = pos.relative(Direction.fromAxisAndDirection(axis, Direction.AxisDirection.POSITIVE))
+        if (!box.isInside(pos)) return
+        level.setBlock(pos, Blocks.SPRUCE_WALL_SIGN.defaultBlockState().setValue(WallSignBlock.FACING, wall.opposite), 2)
+        val sign = level.getBlockEntity(pos) as? SignBlockEntity ?: return
+        var text = SignText().setColor(DyeColor.WHITE)
+        note.signLines().forEachIndexed { line, component -> text = text.setMessage(line, component) }
+        // As data, not with setText/setWaxed: those tell the world, and while it is being generated there is none yet.
+        val tag = CompoundTag()
+        SignText.DIRECT_CODEC.encodeStart(NbtOps.INSTANCE, text).result().ifPresent { tag.put("front_text", it) }
+        tag.putBoolean("is_waxed", true)
+        sign.load(tag)
     }
 
     /** Along the middle of the corridor, with gaps. */
@@ -173,6 +210,7 @@ class MineCellPiece : StructurePiece {
         private const val TAG_RAILS = "Rails"
         private const val TAG_CRUMB = "Crumb"
         private const val TAG_SPAWNER = "Spawner"
+        private const val TAG_NOTE = "Note"
 
         private fun box(corner: BlockPos) = BoundingBox(
             corner.x, corner.y, corner.z,

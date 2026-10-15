@@ -15,6 +15,8 @@ import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilde
  *   broken torch).
  * - 2 small spawners (a zombie one and a skeleton one), in the forks or along the way, never in
  *   the entrance nor in the last cells before the room.
+ * - 2-4 notes on signs (MineNote): one at the entrance, one near the crib room, maybe one halfway
+ *   and one more in a dead end. Never two in the same cell.
  * - Cells nobody walks through stay solid stone.
  *
  * Every corridor cell is a MineCellPiece; its shape (straight, corner, fork, dead end) comes from
@@ -90,6 +92,8 @@ object MineLayout {
         val spawnerCells = (forkCells.shuffled(random) + way.subList(2, (way.size - 2).coerceAtLeast(2)).shuffled(random))
             .distinct().take(2)
 
+        val notes = placeNotes(random, entrance, way, deadEnds) { cell -> cell.neighbours().count { (cell to it) in links } < 4 }
+
         val cells = listOf(entrance) + used.sortedWith(compareBy({ it.i }, { it.j }))
         for (cell in cells) {
             val openings = cell.neighbours().filter { (cell to it) in links }.map { transform.direction(cell, it) }
@@ -110,6 +114,7 @@ object MineLayout {
                         1 -> MineCellPiece.Spawner.SKELETON
                         else -> MineCellPiece.Spawner.NONE
                     },
+                    note = notes[cell],
                 )
             )
         }
@@ -122,6 +127,33 @@ object MineLayout {
         // Where the door is along its wall: the middle of the door cell.
         val doorAlong = if (doorSide.axis == Direction.Axis.X) doorCorner.z - roomCorner.z else doorCorner.x - roomCorner.x
         builder.addPiece(CribRoomPiece(roomCorner, doorSide, doorAlong + CELL / 2))
+    }
+
+    /**
+     * Which cells get a note: one from the entrance, one near the crib room (its last 3 cells of
+     * the way), and up to 2 more (one halfway, one in a dead end). Only cells with a wall to hang
+     * it on ([hasWall]), each note at most once.
+     */
+    private fun placeNotes(
+        random: RandomSource, entrance: Cell, way: List<Cell>, deadEnds: List<Cell>, hasWall: (Cell) -> Boolean,
+    ): Map<Cell, MineNote> {
+        val notes = HashMap<Cell, MineNote>()
+        val left = MineNote.entries.toMutableList()
+        fun place(zone: MineNote.Zone, candidates: List<Cell>) {
+            val cell = candidates.filter { it !in notes && hasWall(it) }.shuffled(random).firstOrNull() ?: return
+            val options = left.filter { it.zone == zone }
+            if (options.isEmpty()) return
+            val note = options[random.nextInt(options.size)]
+            left -= note
+            notes[cell] = note
+        }
+        val third = way.size / 3
+        place(MineNote.Zone.ENTRANCE, listOf(entrance))
+        place(MineNote.Zone.CENTER, way.takeLast(3))
+        val extra = random.nextInt(3)
+        if (extra >= 1) place(MineNote.Zone.MIDDLE, way.subList(third, way.size - third))
+        if (extra >= 2) place(MineNote.Zone.ENTRANCE, deadEnds)
+        return notes
     }
 
     private fun Cell.free(used: Set<Cell>) = inGrid() && !inRoom() && this !in used

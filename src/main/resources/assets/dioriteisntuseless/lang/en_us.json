@@ -169,5 +169,19 @@
   "advancements.dioriteisntuseless.wear_out_axe.title": "Diorite Isn't Useless!",
   "advancements.dioriteisntuseless.wear_out_axe.description": "Wear out a Dioritine Axe. Congratulations on putting diorite to good use!",
   "advancements.dioriteisntuseless.wear_out_pickaxe.title": "Rock Solid Choice",
-  "advancements.dioriteisntuseless.wear_out_pickaxe.description": "Wear out a Dioritine Pickaxe."
+  "advancements.dioriteisntuseless.wear_out_pickaxe.description": "Wear out a Dioritine Pickaxe.",
+  "sign.dioriteisntuseless.mine.bad_idea.1": "Bad idea",
+  "sign.dioriteisntuseless.mine.go_back.1": "Go back",
+  "sign.dioriteisntuseless.mine.warm.1": "It was warm",
+  "sign.dioriteisntuseless.mine.warm.2": "in here. It",
+  "sign.dioriteisntuseless.mine.warm.3": "shouldn't be.",
+  "sign.dioriteisntuseless.mine.why_here.1": "You shouldn't",
+  "sign.dioriteisntuseless.mine.why_here.2": "know why you",
+  "sign.dioriteisntuseless.mine.why_here.3": "are here",
+  "sign.dioriteisntuseless.mine.lamps.1": "Somebody kept",
+  "sign.dioriteisntuseless.mine.lamps.2": "the lamps lit.",
+  "sign.dioriteisntuseless.mine.lamps.3": "Not us.",
+  "sign.dioriteisntuseless.mine.dont_dig.1": "Don't dig the",
+  "sign.dioriteisntuseless.mine.dont_dig.2": "middle.",
+  "sign.dioriteisntuseless.mine.dont_dig.3": "Please."
 }
