@@ -1,6 +1,7 @@
 package daio7771.dioriteisntuseless.abuse.visitor
 
 import daio7771.dioriteisntuseless.Dioriteisntuseless
+import daio7771.dioriteisntuseless.worldgen.MineLocator
 import net.minecraft.ChatFormatting
 import net.minecraft.locale.Language
 import net.minecraft.nbt.ListTag
@@ -24,6 +25,8 @@ import net.minecraft.world.phys.Vec3
  * - [Note.FAREWELL]: at the end of his goodbye, at level 4.
  * - [Note.INSTRUCTIONS]: his instructions book, tossed at their feet on his first visit, when they
  *   come near ([throwTo]; TheMinerEntity). It has a title of its own.
+ * - [Note.MINE]: the first time he pays a job, where the nearest abandoned mine is (MineLocator):
+ *   its shaft, and how deep its corridors are. If there is none near, it waits for another time.
  *
  * Each one once per cycle (MinerState.notesGiven): "Start over" makes them come again, but never
  * takes the ones they have. They are collectibles, the one thing it leaves in their hands. Into
@@ -40,7 +43,8 @@ object MinerNotes {
         WARNING("warning", 2),
         LEVEL_3("level3", 1),
         FAREWELL("farewell", 2),
-        INSTRUCTIONS("instructions", 3, ownTitle = true);
+        INSTRUCTIONS("instructions", 3, ownTitle = true),
+        MINE("mine", 2);
 
         val bit: Int get() = 1 shl ordinal
     }
@@ -67,8 +71,13 @@ object MinerNotes {
      */
     fun give(player: ServerPlayer, from: Entity, miner: MinerState, note: Note) {
         if (given(miner, note)) return
+        // The mine's note says where it is: X and Z of the way in, then the depth of its corridors.
+        val args: Array<Any> = if (note == Note.MINE) {
+            val mine = MineLocator.nearest(player.serverLevel(), player.blockPosition()) ?: return
+            arrayOf(mine.wayIn.x, mine.wayIn.z, mine.floorY)
+        } else emptyArray()
         miner.notesGiven = miner.notesGiven or note.bit
-        val inPocket = handTo(player, from, create(note))
+        val inPocket = handTo(player, from, create(note, args))
         player.displayClientMessage(
             Component.translatable("chat.${Dioriteisntuseless.MOD_ID}.miner.note_${if (inPocket) "given" else "dropped"}")
                 .withStyle(ChatFormatting.GRAY),
@@ -127,8 +136,11 @@ object MinerNotes {
     private const val MIN_THROW = 2.0
     private const val MAX_THROW = 6.0
 
-    /** The book of [note]. Its pages stay translatable: they are shown in the reader's language. */
-    fun create(note: Note): ItemStack = ItemStack(Items.WRITTEN_BOOK).apply {
+    /**
+     * The book of [note]. Its pages stay translatable: they are shown in the reader's language.
+     * Every page gets all of [args] (a page picks its own with %1${'$'}s, %2${'$'}s...).
+     */
+    fun create(note: Note, args: Array<Any> = emptyArray()): ItemStack = ItemStack(Items.WRITTEN_BOOK).apply {
         val tag = orCreateTag
         val title = if (note.ownTitle) text("book.$LANG.${note.id}.title", "The Miner's Instructions") else text("book.$LANG.title", "Note from The Miner")
         tag.putString(WrittenBookItem.TAG_TITLE, title.take(MAX_TITLE))
@@ -136,7 +148,7 @@ object MinerNotes {
         tag.putInt(WrittenBookItem.TAG_GENERATION, TATTERED)
         tag.put(WrittenBookItem.TAG_PAGES, ListTag().apply {
             for (page in 1..note.pages) {
-                add(StringTag.valueOf(Component.Serializer.toJson(Component.translatable("book.$LANG.${note.id}.$page"))))
+                add(StringTag.valueOf(Component.Serializer.toJson(Component.translatable("book.$LANG.${note.id}.$page", *args))))
             }
         })
         tag.putBoolean(WrittenBookItem.TAG_RESOLVED, true)

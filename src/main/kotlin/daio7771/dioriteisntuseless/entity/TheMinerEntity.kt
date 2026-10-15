@@ -381,6 +381,10 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         MinerQuests.onTalk(player, state, mood).forEach { speech += Said.Line(it) }
         // A new job is never of the same kind as the one before: a different kind means a new deal.
         if (state.miner.questType.isNotEmpty() && state.miner.questType != jobBefore) hmm()
+        // He paid one: the first time, he also tells them where the old mine is (MinerNotes).
+        if (jobBefore.isNotEmpty() && state.miner.questType != jobBefore && mood != MinerSpeech.Mood.FAREWELL) {
+            handOver(state.miner, MinerNotes.Note.MINE)
+        }
         if (state.level == MinerNotes.LEVEL_3_NOTE_LEVEL) handOver(state.miner, MinerNotes.Note.LEVEL_3)
         // The paper of their job back in their hands (the same one, or the new one he just wrote).
         if (state.miner.paperHeld && Said.Paper !in speech) speech += Said.Paper
