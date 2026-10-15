@@ -105,12 +105,17 @@ object MinerQuests {
         if (taken > 0) player.displayClientMessage(Component.translatable("$LANG.paper_taken").withStyle(ChatFormatting.GRAY), true)
     }
 
-    /** He hands them the paper of their job, if he has it: into their inventory or at his feet. */
+    /**
+     * He hands them the paper of their job, if he has it: into their inventory or at his feet. Any
+     * other paper of his they carry (the finished job's, picked up again after he arrived) goes:
+     * they only ever keep the current one.
+     */
     fun handPaper(player: ServerPlayer, from: Entity, state: PlayerAbuse) {
         val miner = state.miner
         if (!miner.paperHeld) return
         miner.paperHeld = false
         if (Type.byId(miner.questType) == null) return
+        MinerJobPaperItem.takeAll(player, ModItems.MINER_JOB_PAPER)
         val inPocket = MinerNotes.handTo(player, from, paper(miner))
         player.displayClientMessage(
             Component.translatable("$LANG.paper_${if (inPocket) "given" else "dropped"}").withStyle(ChatFormatting.GRAY), true,
@@ -132,7 +137,9 @@ object MinerQuests {
         val miner = state.miner
         if (!miner.paperHeld) return
         miner.paperHeld = false
-        if (Type.byId(miner.questType) != null) player.inventory.placeItemBackInInventory(paper(miner))
+        if (Type.byId(miner.questType) == null) return
+        MinerJobPaperItem.takeAll(player, ModItems.MINER_JOB_PAPER)
+        player.inventory.placeItemBackInInventory(paper(miner))
     }
 
     private fun paper(miner: MinerState): ItemStack = MinerJobPaperItem.create(ModItems.MINER_JOB_PAPER, miner)
