@@ -10,6 +10,7 @@ import daio7771.dioriteisntuseless.registry.ModEntities
 import daio7771.dioriteisntuseless.registry.ModItems
 import daio7771.dioriteisntuseless.registry.ModRecipes
 import daio7771.dioriteisntuseless.registry.ModSounds
+import daio7771.dioriteisntuseless.registry.ModStructures
 import net.fabricmc.api.ModInitializer
 import net.minecraft.resources.ResourceLocation
 import org.slf4j.Logger
@@ -24,6 +25,7 @@ class Dioriteisntuseless : ModInitializer {
         ModSounds.init()
         ModEntities.init()
         ModRecipes.init()
+        ModStructures.init()
         TreeFeller.init()
         AreaMiner.init()
         DiuCommand.init()
