@@ -54,6 +54,7 @@ object AbuseTracker {
         Finale.init()
         AbuseStateSync.init()
         Visitors.init()
+        MinerVisits.init()
         OwnerStatue.init()
         ServerLifecycleEvents.SERVER_STARTING.register {
             AbuseMode.resetSession()

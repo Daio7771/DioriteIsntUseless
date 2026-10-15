@@ -10,8 +10,11 @@ class MinerState {
     /** His first appearance (the first Diorite Crystals out of a furnace) has happened. */
     var met = false
 
-    /** PlayerAbuse.playTicks at which he comes back, or -1 if no visit is on its way. */
-    var nextVisitAt = -1L
+    /**
+     * PlayerAbuse.playTicks until which a visit of his is on its way (MinerVisits), [NO_DEADLINE]
+     * for his first one, or -1 if none is.
+     */
+    var visitPendingUntil = -1L
 
     /** He said goodbye at level 4: he does not come back until "Start over". */
     var gone = false
@@ -38,6 +41,11 @@ class MinerState {
     var questRewardIron = false
     var questRewardCount = 0
 
+    companion object {
+        /** A visit that waits for as long as it takes: his first one. */
+        const val NO_DEADLINE = Long.MAX_VALUE
+    }
+
     fun clearQuest() {
         questType = ""
         questAmount = 0
@@ -49,7 +57,7 @@ class MinerState {
     /** "Start over": as if they had never met. */
     fun reset() {
         met = false
-        nextVisitAt = -1
+        visitPendingUntil = -1
         gone = false
         clearQuest()
         lastQuestType = ""
@@ -59,7 +67,7 @@ class MinerState {
 
     fun save(): CompoundTag = CompoundTag().apply {
         putBoolean("Met", met)
-        putLong("NextVisitAt", nextVisitAt)
+        putLong("VisitPendingUntil", visitPendingUntil)
         putBoolean("Gone", gone)
         putString("LastLine", lastLine)
         putString("QuestType", questType)
@@ -73,7 +81,12 @@ class MinerState {
 
     fun load(tag: CompoundTag) {
         met = tag.getBoolean("Met")
-        nextVisitAt = if (tag.contains("NextVisitAt")) tag.getLong("NextVisitAt").coerceAtLeast(-1) else -1
+        visitPendingUntil = when {
+            tag.contains("VisitPendingUntil") -> tag.getLong("VisitPendingUntil").coerceAtLeast(-1)
+            // From 0.2 (visits on a timer): only a first visit on its way carries over.
+            !met && tag.getLong("NextVisitAt") >= 0 -> NO_DEADLINE
+            else -> -1
+        }
         gone = tag.getBoolean("Gone")
         lastLine = tag.getString("LastLine")
         questType = tag.getString("QuestType")

@@ -134,6 +134,12 @@ object MinerQuests {
         miner.questRewardCount = if (iron) tier.iron else tier.emeralds
     }
 
+    /** The job they have from him is done (the crystals: they carry them right now). False if they have none. */
+    fun isDone(player: ServerPlayer, state: PlayerAbuse): Boolean {
+        val type = Type.byId(state.miner.questType) ?: return false
+        return progress(player, state, type) >= state.miner.questAmount
+    }
+
     /** What has been done for the job so far. For crystals, how many they carry right now. */
     fun progress(player: ServerPlayer, state: PlayerAbuse, type: Type): Long = when (type) {
         Type.BRING_CRYSTALS -> countCrystals(player, 0).toLong()

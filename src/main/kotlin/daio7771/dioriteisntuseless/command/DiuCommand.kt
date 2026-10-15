@@ -7,6 +7,7 @@ import daio7771.dioriteisntuseless.abuse.AbuseMode
 import daio7771.dioriteisntuseless.abuse.AbuseTracker
 import daio7771.dioriteisntuseless.abuse.signal.AbuseSignals
 import daio7771.dioriteisntuseless.abuse.visitor.MinerQuests
+import daio7771.dioriteisntuseless.abuse.visitor.MinerState
 import daio7771.dioriteisntuseless.abuse.visitor.MinerVisits
 import daio7771.dioriteisntuseless.abuse.visitor.OwnerStatue
 import daio7771.dioriteisntuseless.abuse.visitor.Visitors
@@ -33,7 +34,7 @@ import net.minecraft.world.level.block.state.BlockState
  * changes the level, fires a signal now (a specific one or a random one), skips to the credits,
  * runs "Start over", makes a recorded world change (to test that "Start over" undoes it), or
  * shows the visitors' state, brings one for 30 s, sends them away or makes The Miner's next visit
- * due now (the real one: 5 minutes, then the next one is scheduled), gives them a new job of his,
+ * due now (the real one, as if they had just woken up: 5 minutes), gives them a new job of his,
  * or brings the real statue now (it crumbles 3 s after they see it).
  * Operators only (level 2).
  */
@@ -234,10 +235,15 @@ object DiuCommand {
                 MinerQuests.progress(player, state, type), state.miner.questAmount,
             )
         } ?: Component.literal("-")
+        val pending = when (val until = state.miner.visitPendingUntil) {
+            -1L -> "-"
+            MinerState.NO_DEADLINE -> "∞"
+            else -> until.toString()
+        }
         val here = Visitors.Kind.entries.filter { Visitors.current(player.uuid, it) != null }.joinToString { it.name.lowercase() }
         source.sendSuccess({
             Component.translatable(
-                "$ABUSE_LANG.visitor.status", player.displayName, state.miner.met, state.miner.nextVisitAt,
+                "$ABUSE_LANG.visitor.status", player.displayName, state.miner.met, pending,
                 state.playTicks, state.miner.gone, quest, state.owner.axesWornOut, state.owner.pickaxesWornOut,
                 OwnerStatue.TOOLS_NEEDED, state.owner.statueShown, here.ifEmpty { "-" },
             )
