@@ -287,7 +287,12 @@ object DiuCommand {
             return 0
         }
         val state = AbuseTracker.state(source.server, player)
-        AbuseMode.guard("test miner quest") { MinerQuests.assign(player, state) }
+        AbuseMode.guard("test miner quest") {
+            // The new paper replaces theirs: he hands it over now, or when he comes if he is here.
+            MinerQuests.takePapers(player, state)
+            MinerQuests.assign(player, state)
+            if (Visitors.current(player.uuid, Visitors.Kind.MINER) == null) MinerQuests.returnPaper(player, state)
+        }
         source.sendSuccess({
             Component.translatable("$ABUSE_LANG.visitor.new_quest", player.displayName, MinerQuests.description(state.miner))
         }, false)

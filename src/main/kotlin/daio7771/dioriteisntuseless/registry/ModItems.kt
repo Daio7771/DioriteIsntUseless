@@ -3,6 +3,7 @@ package daio7771.dioriteisntuseless.registry
 import daio7771.dioriteisntuseless.Dioriteisntuseless
 import daio7771.dioriteisntuseless.item.DioritineAxeItem
 import daio7771.dioriteisntuseless.item.DioritinePickaxeItem
+import daio7771.dioriteisntuseless.item.MinerJobPaperItem
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents
 import net.minecraft.core.Registry
 import net.minecraft.core.registries.BuiltInRegistries
@@ -15,6 +16,9 @@ object ModItems {
     val DIORITINE_INGOT: Item = register("dioritine_ingot", Item(Item.Properties()))
     val DIORITINE_AXE: Item = register("dioritine_axe", DioritineAxeItem(Item.Properties()))
     val DIORITINE_PICKAXE: Item = register("dioritine_pickaxe", DioritinePickaxeItem(Item.Properties()))
+
+    /** Only from The Miner: not in the creative tabs. */
+    val MINER_JOB_PAPER: Item = register("miner_job_paper", MinerJobPaperItem(Item.Properties().stacksTo(1)))
 
     private fun register(name: String, item: Item): Item =
         Registry.register(BuiltInRegistries.ITEM, Dioriteisntuseless.id(name), item)

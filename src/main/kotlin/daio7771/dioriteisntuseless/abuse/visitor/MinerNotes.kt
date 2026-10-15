@@ -68,21 +68,29 @@ object MinerNotes {
     fun give(player: ServerPlayer, from: Entity, miner: MinerState, note: Note) {
         if (given(miner, note)) return
         miner.notesGiven = miner.notesGiven or note.bit
-        val book = create(note)
-        val inPocket = player.inventory.add(book)
-        if (!inPocket) {
-            val level = player.serverLevel()
-            val item = ItemEntity(level, from.x, from.y + 0.1, from.z, book, 0.0, 0.0, 0.0)
-            item.setDefaultPickUpDelay()
-            item.setUnlimitedLifetime()
-            level.addFreshEntity(item)
-        }
-        player.containerMenu.broadcastChanges()
+        val inPocket = handTo(player, from, create(note))
         player.displayClientMessage(
             Component.translatable("chat.${Dioriteisntuseless.MOD_ID}.miner.note_${if (inPocket) "given" else "dropped"}")
                 .withStyle(ChatFormatting.GRAY),
             true,
         )
+    }
+
+    /**
+     * Puts [stack] (something of his) into [player]'s inventory or, if it does not fit, on the
+     * ground at the feet of [from] (an item that never despawns). Returns whether it fit.
+     */
+    fun handTo(player: ServerPlayer, from: Entity, stack: ItemStack): Boolean {
+        val inPocket = player.inventory.add(stack)
+        if (!inPocket) {
+            val level = player.serverLevel()
+            val item = ItemEntity(level, from.x, from.y + 0.1, from.z, stack, 0.0, 0.0, 0.0)
+            item.setDefaultPickUpDelay()
+            item.setUnlimitedLifetime()
+            level.addFreshEntity(item)
+        }
+        player.containerMenu.broadcastChanges()
+        return inPocket
     }
 
     /**
@@ -93,8 +101,13 @@ object MinerNotes {
     fun throwTo(player: ServerPlayer, from: LivingEntity, miner: MinerState, note: Note) {
         if (given(miner, note)) return
         miner.notesGiven = miner.notesGiven or note.bit
+        toss(player, from, create(note))
+    }
+
+    /** Tosses [stack] at [player]'s feet from [from], like [throwTo]. */
+    fun toss(player: ServerPlayer, from: LivingEntity, stack: ItemStack) {
         val level = player.serverLevel()
-        val item = ItemEntity(level, from.x, from.eyeY - THROW_DROP, from.z, create(note))
+        val item = ItemEntity(level, from.x, from.eyeY - THROW_DROP, from.z, stack)
         var towards = Vec3(player.x - from.x, 0.0, player.z - from.z)
         if (towards.lengthSqr() < 1.0E-4) towards = Vec3.directionFromRotation(0f, from.yRot)
         val distance = towards.length().coerceIn(MIN_THROW, MAX_THROW)

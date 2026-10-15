@@ -69,8 +69,9 @@ import kotlin.math.sin
  * along it is (MinerQuests). There is no trading screen. His lines come one at a time, and he does
  * not leave while he still has something to say. At the key moments he also hands over a note
  * (MinerNotes), in its place among his lines. On his first visit, when they come near, he tosses
- * them his instructions book. While they are near him, a note on their screen shows his favor
- * (MinerQuests.sendNote).
+ * them his instructions book and the paper of his first favor. Every job comes on a paper
+ * (MinerJobPaperItem): he takes theirs back when he arrives and, after talking, hands them the
+ * current one (MinerQuests).
  *
  * He waits for them: once they have seen him, if they stay within [NOTICE_DISTANCE] without
  * talking to him for [NO_RESPONSE_TICKS] (15 s), he leaves (far away, the count stops). Leaving,
@@ -92,6 +93,7 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
     private sealed interface Said {
         class Line(val text: Component) : Said
         class Note(val note: MinerNotes.Note) : Said
+        object Paper : Said
     }
 
     /** His goodbye has started (level 4). */
@@ -104,9 +106,6 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
     var omenSpot: Vec3? = null
         private set
     private var omenTicks = 0
-
-    /** The note on their screen (MinerQuests.sendNote) has been sent for this visit. */
-    private var noteSent = false
 
     /** They have seen him in this visit: from then on, he only waits [NO_RESPONSE_TICKS] for them. */
     private var noticed = false
@@ -156,6 +155,9 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
     }
 
     override fun onArrival(player: ServerPlayer) {
+        val data = AbuseData.get(player.server)
+        MinerQuests.takePapers(player, data.get(player.uuid))
+        data.setDirty()
         arrivedCovered = isCovered(blockPosition())
         roamHere()
         updateMood(player)
@@ -200,7 +202,6 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
 
     override fun visitTick(player: ServerPlayer) {
         if (tickCount % MOOD_CHECK_TICKS == 0) updateMood(player)
-        if (!noteSent) sendNote(player)
         // Out of reach of his goals, or at level 4 (unless he is leaving): he stays where he is.
         if ((mood == MinerSpeech.Mood.FAREWELL && !isLeaving) || nearPlayer == null) navigation.stop()
         if (omenTicks > 0 && --omenTicks == 0) omenSpot = null
@@ -217,7 +218,8 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
 
     /**
      * His first visit (in each cycle): when they come within [THROW_DISTANCE] and he can see them,
-     * he tosses his instructions book at their feet (MinerNotes). Not at level 4.
+     * he tosses his instructions book and the paper of his first job at their feet (MinerNotes,
+     * MinerQuests). Not at level 4.
      */
     private fun tickInstructions(player: ServerPlayer) {
         if (instructionsDone || tickCount % INSTRUCTIONS_CHECK_TICKS != 0 || busy || isLeaving) return
@@ -231,6 +233,7 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         if (distanceToSqr(player) > THROW_DISTANCE * THROW_DISTANCE || !hasLineOfSight(player)) return
         swing(InteractionHand.MAIN_HAND)
         MinerNotes.throwTo(player, this, miner, MinerNotes.Note.INSTRUCTIONS)
+        MinerQuests.tossFirstPaper(player, this, data.get(player.uuid))
         data.setDirty()
         instructionsDone = true
         // A book landing at their feet: they know he is here.
@@ -314,13 +317,6 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         val mood = MinerSpeech.mood(AbuseData.get(player.server).get(player.uuid).level)
         if (mood == this.mood) return
         entityData.set(DATA_MOOD, mood.ordinal.toByte())
-        // The note on their screen changes with his mood (and is gone at level 4).
-        if (noteSent) sendNote(player)
-    }
-
-    private fun sendNote(player: ServerPlayer) {
-        noteSent = true
-        MinerQuests.sendNote(player, AbuseData.get(player.server).get(player.uuid), id)
     }
 
     /** OwnerStatue: The "Useful" Owner will appear at [spot] in a moment. He turns his head there for [ticks]. */
@@ -386,9 +382,10 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
         // A new job is never of the same kind as the one before: a different kind means a new deal.
         if (state.miner.questType.isNotEmpty() && state.miner.questType != jobBefore) hmm()
         if (state.level == MinerNotes.LEVEL_3_NOTE_LEVEL) handOver(state.miner, MinerNotes.Note.LEVEL_3)
+        // The paper of their job back in their hands (the same one, or the new one he just wrote).
+        if (state.miner.paperHeld && Said.Paper !in speech) speech += Said.Paper
         talked = true
         data.setDirty()
-        sendNote(player)
         if (mood == MinerSpeech.Mood.FAREWELL) {
             if (!sayingGoodbye) sayGoodbye(player)
             return
@@ -421,6 +418,12 @@ class TheMinerEntity(type: EntityType<out TheMinerEntity>, level: Level) : Visit
             is Said.Note -> {
                 val data = AbuseData.get(player.server)
                 MinerNotes.give(player, this, data.get(player.uuid).miner, next.note)
+                data.setDirty()
+                lineCountdown = NOTE_PAUSE_TICKS
+            }
+            Said.Paper -> {
+                val data = AbuseData.get(player.server)
+                MinerQuests.handPaper(player, this, data.get(player.uuid))
                 data.setDirty()
                 lineCountdown = NOTE_PAUSE_TICKS
             }

@@ -37,6 +37,12 @@ class MinerState {
     /** Value of the job's counter (trees felled or strikes) when it was given. */
     var questStart = 0L
 
+    /**
+     * He has the paper of the job in his hands, not them: he took it when he arrived, or wrote a new
+     * one. He hands it back after talking (TheMinerEntity) or, if he left before, MinerQuests.returnPaper.
+     */
+    var paperHeld = false
+
     /** It pays [questRewardCount] iron ingots (true) or emeralds (false). */
     var questRewardIron = false
     var questRewardCount = 0
@@ -52,6 +58,7 @@ class MinerState {
         questStart = 0
         questRewardIron = false
         questRewardCount = 0
+        paperHeld = false
     }
 
     /** "Start over": as if they had never met. */
@@ -77,6 +84,7 @@ class MinerState {
         putBoolean("QuestRewardIron", questRewardIron)
         putInt("QuestRewardCount", questRewardCount)
         putInt("NotesGiven", notesGiven)
+        putBoolean("PaperHeld", paperHeld)
     }
 
     fun load(tag: CompoundTag) {
@@ -96,6 +104,7 @@ class MinerState {
         questRewardIron = tag.getBoolean("QuestRewardIron")
         questRewardCount = tag.getInt("QuestRewardCount").coerceIn(0, MAX_REWARD)
         notesGiven = tag.getInt("NotesGiven")
+        paperHeld = tag.getBoolean("PaperHeld")
         // A job that makes no sense (an unknown kind, edited data) is dropped: he gives a new one.
         if (MinerQuests.Type.byId(questType) == null || questAmount <= 0) clearQuest()
     }

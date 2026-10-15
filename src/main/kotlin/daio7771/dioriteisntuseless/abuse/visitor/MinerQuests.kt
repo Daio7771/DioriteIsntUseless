@@ -2,12 +2,14 @@ package daio7771.dioriteisntuseless.abuse.visitor
 
 import daio7771.dioriteisntuseless.Dioriteisntuseless
 import daio7771.dioriteisntuseless.abuse.PlayerAbuse
-import daio7771.dioriteisntuseless.network.MinerNotePacket
+import daio7771.dioriteisntuseless.item.MinerJobPaperItem
 import daio7771.dioriteisntuseless.registry.ModEntities
 import daio7771.dioriteisntuseless.registry.ModItems
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.MutableComponent
+import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.LivingEntity
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
@@ -22,8 +24,12 @@ import net.minecraft.world.item.Items
  *
  * Jobs are given and paid when talking to him (right-click); he says it in his bubble, only to that
  * player, in the mood of their abuse level (MinerSpeech). At level 4 he only pays: no more jobs.
- * When one is done away from him, a quiet line above the hotbar says so. While they are near him,
- * a note on their screen shows the job and how far along it is ([sendNote]).
+ * When one is done away from him, a quiet line above the hotbar says so.
+ *
+ * Each job comes on a paper (MinerJobPaperItem): the first one together with his instructions book,
+ * the next ones when he pays the one before. When he arrives he takes back every paper they carry
+ * ([takePapers]) and, after talking, hands them the current one ([handPaper]). If he leaves before
+ * that, it is back in their pocket all the same ([returnPaper]).
  *
  * Only used from the server thread.
  */
@@ -50,7 +56,6 @@ object MinerQuests {
     )
 
     private const val LANG = "chat.${Dioriteisntuseless.MOD_ID}.miner"
-    private const val NOTE = "note.${Dioriteisntuseless.MOD_ID}.miner"
 
     /**
      * Talking to him (right-click), every time. Pays a finished job (right away) and gives a new
@@ -80,12 +85,10 @@ object MinerQuests {
     }
 
     /**
-     * From AbuseTracker after every tree or strike: the note on their screen is updated if he is
-     * there, and if it finishes the job, a quiet line says so.
+     * From AbuseTracker after every tree or strike: if it finishes the job, a quiet line says so.
      */
     fun onAbuseAction(player: ServerPlayer, state: PlayerAbuse) {
         val type = Type.byId(state.miner.questType) ?: return
-        Visitors.current(player.uuid, Visitors.Kind.MINER)?.let { sendNote(player, state, it.id) }
         // Exactly at the amount: only the action that finishes it, not every one after it.
         if (type == Type.BRING_CRYSTALS || counter(state, type) - state.miner.questStart != state.miner.questAmount.toLong()) return
         player.displayClientMessage(
@@ -95,29 +98,44 @@ object MinerQuests {
         )
     }
 
-    /**
-     * The note on their screen while they are near The Miner ([minerId]) (MinerNotePacket): the job
-     * they have from him and how far along it is or, if none, his phrase of the level. At level 4,
-     * an empty one: no note. Sent when he arrives, when they talk to him, when his mood changes
-     * and after every tree or strike. Not to clients without the mod.
-     */
-    fun sendNote(player: ServerPlayer, state: PlayerAbuse, minerId: Int) {
-        if (!ServerPlayNetworking.canSend(player, MinerNotePacket.TYPE)) return
-        val mood = MinerSpeech.mood(state.level)
-        val miner = state.miner
-        val type = Type.byId(miner.questType)
-        val note = when {
-            mood == MinerSpeech.Mood.FAREWELL ->
-                MinerNotePacket(minerId, Component.empty(), Component.empty(), 0, 0, false, Component.empty())
-            type == null ->
-                MinerNotePacket(minerId, Component.empty(), Component.translatable("$NOTE.wants${mood.suffix}"), 0, 0, false, Component.empty())
-            else -> MinerNotePacket(
-                minerId, Component.translatable("$NOTE.job${mood.suffix}"), description(miner), miner.questAmount,
-                progress(player, state, type).toInt(), type == Type.BRING_CRYSTALS, reward(miner),
-            )
-        }
-        ServerPlayNetworking.send(player, note)
+    /** When he arrives: he takes back every job paper they carry; the current job's is in his hands now. */
+    fun takePapers(player: ServerPlayer, state: PlayerAbuse) {
+        val taken = MinerJobPaperItem.takeAll(player, ModItems.MINER_JOB_PAPER)
+        if (Type.byId(state.miner.questType) != null) state.miner.paperHeld = true
+        if (taken > 0) player.displayClientMessage(Component.translatable("$LANG.paper_taken").withStyle(ChatFormatting.GRAY), true)
     }
+
+    /** He hands them the paper of their job, if he has it: into their inventory or at his feet. */
+    fun handPaper(player: ServerPlayer, from: Entity, state: PlayerAbuse) {
+        val miner = state.miner
+        if (!miner.paperHeld) return
+        miner.paperHeld = false
+        if (Type.byId(miner.questType) == null) return
+        val inPocket = MinerNotes.handTo(player, from, paper(miner))
+        player.displayClientMessage(
+            Component.translatable("$LANG.paper_${if (inPocket) "given" else "dropped"}").withStyle(ChatFormatting.GRAY), true,
+        )
+    }
+
+    /** On his first visit, together with his instructions book: the first job, tossed at their feet. */
+    fun tossFirstPaper(player: ServerPlayer, from: LivingEntity, state: PlayerAbuse) {
+        if (Type.byId(state.miner.questType) == null) assign(player, state)
+        state.miner.paperHeld = false
+        MinerNotes.toss(player, from, paper(state.miner))
+    }
+
+    /**
+     * From MinerVisits, while he is not with them: he left with their paper in his hands (they did
+     * not talk to him, they disconnected...). It goes back into their inventory, quietly.
+     */
+    fun returnPaper(player: ServerPlayer, state: PlayerAbuse) {
+        val miner = state.miner
+        if (!miner.paperHeld) return
+        miner.paperHeld = false
+        if (Type.byId(miner.questType) != null) player.inventory.placeItemBackInInventory(paper(miner))
+    }
+
+    private fun paper(miner: MinerState): ItemStack = MinerJobPaperItem.create(ModItems.MINER_JOB_PAPER, miner)
 
     /** A new random job, never the same kind twice in a row. Also used by the testing command. */
     fun assign(player: ServerPlayer, state: PlayerAbuse) {
@@ -132,6 +150,8 @@ object MinerQuests {
         miner.questStart = counter(state, type)
         miner.questRewardIron = iron
         miner.questRewardCount = if (iron) tier.iron else tier.emeralds
+        // He writes it down: the paper is in his hands until he gives it to them.
+        miner.paperHeld = true
     }
 
     /** The job they have from him is done (the crystals: they carry them right now). False if they have none. */
@@ -149,8 +169,12 @@ object MinerQuests {
     /** "Fell 3 trees with your Dioritine Axe". */
     fun description(miner: MinerState): Component = Component.translatable("quest.${Dioriteisntuseless.MOD_ID}.${miner.questType}", miner.questAmount)
 
-    private fun reward(miner: MinerState): Component =
-        Component.translatable("$LANG.reward.${if (miner.questRewardIron) "iron" else "emerald"}", miner.questRewardCount)
+    fun description(type: Type, amount: Int): MutableComponent = Component.translatable("quest.${Dioriteisntuseless.MOD_ID}.${type.id}", amount)
+
+    private fun reward(miner: MinerState): Component = reward(miner.questRewardIron, miner.questRewardCount)
+
+    /** "5 emeralds", "8 iron ingots". */
+    fun reward(iron: Boolean, count: Int): Component = Component.translatable("$LANG.reward.${if (iron) "iron" else "emerald"}", count)
 
     private fun counter(state: PlayerAbuse, type: Type): Long = when (type) {
         Type.FELL_TREES -> state.treesFelled

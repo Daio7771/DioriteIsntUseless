@@ -161,11 +161,43 @@ PICKAXE_GRID = [
     "www.............",
 ]
 
+# The Miner's job paper: old, yellowed paper with a torn corner, a few lines of his ink and a
+# smudge of diorite dust from his fingers.
+PAPER = {
+    "O": "#5A4A30",  # outline (dark old paper)
+    "D": "#B8A57A",  # shade
+    "M": "#D8C8A0",  # paper
+    "L": "#EFE4C4",  # lit paper
+    "H": "#FAF4E0",  # highlight
+    "i": "#3A2E1C",  # ink
+    "S": "#A8A4AE",  # diorite dust
+}
+
+PAPER_GRID = [
+    "................",
+    "..OOOOOOOOOO....",
+    "..OHHLLLLLLMOO..",
+    "..OHiiiLiiLLMO..",
+    "..OLLLLLLLLLMO..",
+    "..OLiiLiiiiLMO..",
+    "..OLLLLLLLLLMO..",
+    "..OLiiiiLiiLMO..",
+    "..OLLLLLLLLMMO..",
+    "..OLiiLiiiLMMO..",
+    "..OLLLLLLLSMDO..",
+    "..OLiiiLLSSMDO..",
+    "..OMLLLLLMMDDO..",
+    "..OMMMMMMDDOO...",
+    "..OOOOOOOOO.....",
+    "................",
+]
+
 ITEMS = {
     "diorite_crystal": (CRYSTAL_GRID, CRYSTAL),
     "dioritine_ingot": (INGOT_GRID, INGOT),
     "dioritine_axe": (AXE_GRID, AXE),
     "dioritine_pickaxe": (PICKAXE_GRID, PICKAXE),
+    "miner_job_paper": (PAPER_GRID, PAPER),
 }
 
 

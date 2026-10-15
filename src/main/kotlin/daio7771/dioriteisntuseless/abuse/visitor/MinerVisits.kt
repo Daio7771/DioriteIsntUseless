@@ -78,6 +78,7 @@ object MinerVisits {
     /** From the AbuseTracker player tick (every few ticks). */
     fun tick(player: ServerPlayer, state: PlayerAbuse) {
         val miner = state.miner
+        if (Visitors.current(player.uuid, Visitors.Kind.MINER) == null) MinerQuests.returnPaper(player, state)
         if (miner.visitPendingUntil < 0) return
         if (miner.gone || state.level >= AbuseTracker.LEVEL_FINAL || state.playTicks > miner.visitPendingUntil) {
             miner.visitPendingUntil = -1
