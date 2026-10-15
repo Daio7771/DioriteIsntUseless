@@ -11,8 +11,10 @@ import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilde
  * - The crib room (CribRoomPiece) takes the 2x2 cells of one corner: the end of the maze.
  * - The way there starts at the opposite corner, behind the entrance (a cell outside the grid,
  *   with beams and broken rails), and winds through the grid to a cell next to the room.
- * - 2-3 false forks leave that way and end in dead ends, which may have crumbs (some diorite, a
- *   broken torch).
+ * - Behind the entrance, a shaft with a ladder goes up to the surface (MineShaftPiece), unless
+ *   there is water up there: then the entrance has caved in.
+ * - False forks (about one for every 4 cells of the way) leave it, or leave other forks, and end
+ *   in dead ends, which may have crumbs (some diorite, a torch, an old pickaxe).
  * - 2 small spawners (a zombie one and a skeleton one), in the forks or along the way, never in
  *   the entrance nor in the last cells before the room.
  * - 2-4 notes on signs (MineNote): one at the entrance, one near the crib room, maybe one halfway
@@ -26,7 +28,7 @@ import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilde
 object MineLayout {
 
     const val CELL = 5
-    const val GRID = 5
+    const val GRID = 13
     const val SIZE = CELL * GRID
 
     /** Floor, corridors 3 high, roof; the crib room is one block taller. */
@@ -36,11 +38,13 @@ object MineLayout {
     private const val ROOM_START = GRID - 2
 
     /** Way lengths (cells) accepted at once; otherwise the shortest of [WAY_ATTEMPTS]. */
-    private const val MIN_WAY = 7
-    private const val MAX_WAY = 13
+    private const val MIN_WAY = 30
+    private const val MAX_WAY = 60
     private const val WAY_ATTEMPTS = 40
 
-    private const val MAX_BRANCH = 3
+    private const val MIN_BRANCH = 2
+    private const val MAX_BRANCH = 6
+    private const val WAY_CELLS_PER_FORK = 4
     private const val CRUMB_CHANCE = 0.7f
     private const val BEAM_CHANCE = 0.5f
 
@@ -53,7 +57,12 @@ object MineLayout {
         fun inRoom() = i >= ROOM_START && j >= ROOM_START
     }
 
-    fun addPieces(builder: StructurePiecesBuilder, origin: BlockPos, random: RandomSource) {
+    /** Where the ground is at a column: the y of the first free block above it, or null if there is water on top. */
+    fun interface Ground {
+        fun surfaceAt(x: Int, z: Int): Int?
+    }
+
+    fun addPieces(builder: StructurePiecesBuilder, origin: BlockPos, random: RandomSource, ground: Ground) {
         val transform = Transform(random.nextBoolean(), random.nextBoolean(), random.nextBoolean())
         val way = findWay(random)
         val used = way.toMutableSet()
@@ -65,17 +74,24 @@ object MineLayout {
         way.zipWithNext().forEach { (a, b) -> link(a, b) }
         val entrance = Cell(-1, 0)
         link(entrance, way.first())
+        val shaft = Cell(-2, 0)
+        val shaftCorner = transform.cellCorner(origin, shaft)
+        val surface = ground.surfaceAt(shaftCorner.x + CELL / 2, shaftCorner.z + CELL / 2)
+            ?.takeIf { it > origin.y + HEIGHT + MineShaftPiece.MIN_LENGTH }
+        if (surface != null) {
+            link(shaft, entrance)
+            builder.addPiece(MineShaftPiece(shaftCorner, transform.direction(shaft, entrance), surface))
+        }
         val roomDoor = way.last().neighbours().first { it.inGrid() && it.inRoom() }
         link(way.last(), roomDoor)
 
         // False forks: from the way (not its first or last cell) into cells nobody uses.
-        val deadEnds = ArrayList<Cell>()
         val forkCells = ArrayList<Cell>()
-        repeat(2 + random.nextInt(2)) {
-            val starts = way.subList(1, way.size - 1).filter { cell -> cell.neighbours().any { it.free(used) } }
+        repeat(way.size / WAY_CELLS_PER_FORK + random.nextInt(3)) {
+            val starts = (way.subList(1, way.size - 1) + forkCells).filter { cell -> cell.neighbours().any { it.free(used) } }
             if (starts.isEmpty()) return@repeat
             var at = starts[random.nextInt(starts.size)]
-            val length = 1 + random.nextInt(MAX_BRANCH)
+            val length = MIN_BRANCH + random.nextInt(MAX_BRANCH - MIN_BRANCH + 1)
             for (step in 0 until length) {
                 val options = at.neighbours().filter { it.free(used) }
                 if (options.isEmpty()) break
@@ -85,8 +101,9 @@ object MineLayout {
                 link(at, next)
                 at = next
             }
-            if (at !in way) deadEnds += at
         }
+        // A fork that another fork left from is not a dead end any more: only those with one way in.
+        val deadEnds = forkCells.filter { cell -> cell.neighbours().count { (cell to it) in links } == 1 }
 
         // Spawners: in the forks first, otherwise along the middle of the way.
         val spawnerCells = (forkCells.shuffled(random) + way.subList(2, (way.size - 2).coerceAtLeast(2)).shuffled(random))

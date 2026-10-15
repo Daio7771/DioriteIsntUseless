@@ -75,6 +75,9 @@ class MineCellPiece : StructurePiece {
         note = MineNote.byId(tag.getString(TAG_NOTE))
     }
 
+    /** The entrance corridor (where the shaft comes down). */
+    val isEntrance: Boolean get() = entrance
+
     override fun addAdditionalSaveData(context: StructurePieceSerializationContext, tag: CompoundTag) {
         tag.putInt(TAG_OPENINGS, openings.fold(0) { bits, it -> bits or (1 shl it.get2DDataValue()) })
         tag.putBoolean(TAG_ENTRANCE, entrance)

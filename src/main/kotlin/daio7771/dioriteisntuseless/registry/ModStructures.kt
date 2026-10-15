@@ -4,6 +4,7 @@ import daio7771.dioriteisntuseless.Dioriteisntuseless
 import daio7771.dioriteisntuseless.worldgen.AbandonedMineStructure
 import daio7771.dioriteisntuseless.worldgen.CribRoomPiece
 import daio7771.dioriteisntuseless.worldgen.MineCellPiece
+import daio7771.dioriteisntuseless.worldgen.MineShaftPiece
 import net.minecraft.core.Registry
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.level.levelgen.structure.StructureType
@@ -29,6 +30,11 @@ object ModStructures {
     val CRIB_ROOM: StructurePieceType = Registry.register(
         BuiltInRegistries.STRUCTURE_PIECE, Dioriteisntuseless.id("abandoned_mine_crib_room"),
         StructurePieceType.ContextlessType { tag -> CribRoomPiece(tag) },
+    )
+
+    val MINE_SHAFT: StructurePieceType = Registry.register(
+        BuiltInRegistries.STRUCTURE_PIECE, Dioriteisntuseless.id("abandoned_mine_shaft"),
+        StructurePieceType.ContextlessType { tag -> MineShaftPiece(tag) },
     )
 
     /** Call from onInitialize: accessing the object registers everything above. */
