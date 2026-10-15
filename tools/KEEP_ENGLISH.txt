@@ -1,0 +1,20 @@
+# Keys of en_us.json that stay in English in every language: what diorite and The "Useful" Owner
+# "say", and proper names (The Miner, The "Useful" Owner, Morse, USELESS, the final sign, the sign
+# words, the mine notes and the sentences with the mod's name).
+# One key per line; lines starting with # are comments.
+
+# Abandoned mine: the notes on its signs
+sign.dioriteisntuseless.mine.bad_idea.1
+sign.dioriteisntuseless.mine.go_back.1
+sign.dioriteisntuseless.mine.warm.1
+sign.dioriteisntuseless.mine.warm.2
+sign.dioriteisntuseless.mine.warm.3
+sign.dioriteisntuseless.mine.why_here.1
+sign.dioriteisntuseless.mine.why_here.2
+sign.dioriteisntuseless.mine.why_here.3
+sign.dioriteisntuseless.mine.lamps.1
+sign.dioriteisntuseless.mine.lamps.2
+sign.dioriteisntuseless.mine.lamps.3
+sign.dioriteisntuseless.mine.dont_dig.1
+sign.dioriteisntuseless.mine.dont_dig.2
+sign.dioriteisntuseless.mine.dont_dig.3
