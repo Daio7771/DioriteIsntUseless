@@ -34,7 +34,7 @@ object MineLocator {
         if (start == null || !start.isValid) return null
         val entrance = start.pieces.filterIsInstance<MineCellPiece>().firstOrNull { it.isEntrance } ?: return null
         val floorY = entrance.boundingBox.minY() + 1
-        // Mines from before 0.3.1 may have none (water above); there is no way in to tell them about.
+        // Mines from older versions may have no shaft (water above); there is no way in to tell them about.
         val shaft = start.pieces.filterIsInstance<MineShaftPiece>().firstOrNull() ?: return null
         return Found(shaft.top, floorY)
     }
