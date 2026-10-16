@@ -15,7 +15,7 @@ import net.minecraft.world.level.levelgen.structure.Structure
  */
 object MineLocator {
 
-    /** Where to go: the top of its shaft (or, without one, its entrance), and the height of its corridors. */
+    /** Where to go: the top of its shaft, and the height of its corridors. */
     class Found(val wayIn: BlockPos, val floorY: Int)
 
     private val TAG: TagKey<Structure> = TagKey.create(Registries.STRUCTURE, Dioriteisntuseless.id("abandoned_mine"))
@@ -34,7 +34,8 @@ object MineLocator {
         if (start == null || !start.isValid) return null
         val entrance = start.pieces.filterIsInstance<MineCellPiece>().firstOrNull { it.isEntrance } ?: return null
         val floorY = entrance.boundingBox.minY() + 1
-        val shaft = start.pieces.filterIsInstance<MineShaftPiece>().firstOrNull()
-        return Found(shaft?.top ?: entrance.boundingBox.center, floorY)
+        // Mines from before 0.3.1 may have none (water above); there is no way in to tell them about.
+        val shaft = start.pieces.filterIsInstance<MineShaftPiece>().firstOrNull() ?: return null
+        return Found(shaft.top, floorY)
     }
 }

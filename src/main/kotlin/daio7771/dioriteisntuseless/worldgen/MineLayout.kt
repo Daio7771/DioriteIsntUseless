@@ -11,8 +11,9 @@ import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilde
  * - The crib room (CribRoomPiece) takes the 2x2 cells of one corner: the end of the maze.
  * - The way there starts at the opposite corner, behind the entrance (a cell outside the grid,
  *   with beams and broken rails), and winds through the grid to a cell next to the room.
- * - Behind the entrance, a shaft with a ladder goes up to the surface (MineShaftPiece), unless
- *   there is water up there: then the entrance has caved in.
+ * - Behind the entrance, a shaft with a ladder goes up to the surface (MineShaftPiece). Where it
+ *   can't (water up there, or too little ground), there is no mine at all: one nobody can find
+ *   from above is no use, and The Miner would send them to a river.
  * - False forks (about one for every 4 cells of the way) leave it, or leave other forks, and end
  *   in dead ends, which may have crumbs (some diorite, a torch, an old pickaxe).
  * - 2 small spawners (a zombie one and a skeleton one), in the forks or along the way, never in
@@ -78,10 +79,9 @@ object MineLayout {
         val shaftCorner = transform.cellCorner(origin, shaft)
         val surface = ground.surfaceAt(shaftCorner.x + CELL / 2, shaftCorner.z + CELL / 2)
             ?.takeIf { it > origin.y + HEIGHT + MineShaftPiece.MIN_LENGTH }
-        if (surface != null) {
-            link(shaft, entrance)
-            builder.addPiece(MineShaftPiece(shaftCorner, transform.direction(shaft, entrance), surface))
-        }
+            ?: return // No pieces: the structure start is invalid and nothing is built.
+        link(shaft, entrance)
+        builder.addPiece(MineShaftPiece(shaftCorner, transform.direction(shaft, entrance), surface))
         val roomDoor = way.last().neighbours().first { it.inGrid() && it.inRoom() }
         link(way.last(), roomDoor)
 
